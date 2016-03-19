@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 class Conf:
-  def __init__(self, filename, sep=":"):
+  def __init__(self, filename, sep=":", verbose=False):
     self.filename = filename
+    self.verbose = verbose
     self.config = {}
     self.sep = sep
     self.readFile()
@@ -13,29 +14,54 @@ class Conf:
     self.text = [x[:-1] for x in f.readlines() if x[:-1] != ""]
     f.close()     
 
+  def writeFile(self, alternateFile=None):
+    filename = self.filename
+    if alternateFile:
+      filename = alternateFile
+    
+    try:
+      with open(filename, "w") as f:
+        for i in sorted(self.config):
+          f.write("{}:{}\n".format(i, self.config[i]))
+    except Exception as e:
+      print("ERROR: {}".format(e))
+      return 1
+    if self.verbose:
+      print("\n{} Written succesfully".format(filename))
+
+    return 0
+
   def extractConfig(self):
     lineno = 1
     for i in self.text:
       setting,sep,value = i.partition(self.sep)
       if setting in self.config:
-        print("\nDuplicate setting '{}' (Line {})".format(setting, lineno)) 
+        if self.verbose:
+          print("\nDuplicate setting '{}' (Line {})".format(setting, lineno)) 
       else:
         if setting == "":
-          print("Empty setting name at Line {}".format(lineno))
+          if self.verbose:
+            print("\nEmpty setting name (Line {})".format(lineno))
         else:
-          self.config[setting] = value
+          if value == "":
+            if self.verbose:
+              print("\nEmpty setting value '{}' (Line {})".format(setting,lineno))
+          else:
+            self.config[setting] = value
       lineno += 1
 
-  def get(self, key):
+  def getValue(self, key):
     if key in self.config:
       return self.config[key]
     else:
-      print("Setting '{}' not found!".format(key))
+      if self.verbose:
+        print("Setting '{}' not found!".format(key))
       return 0
 
-  def set(self, key, value):
+  def setValue(self, key, value):
     if key == "":
-      print("Non-empty keys only please! (value thrown: {})".format(value))
+      if self.verbose:
+        print("Non-empty keys only please! (value thrown: {})".format(value))
       return False
     else:
       self.config[key] = value
