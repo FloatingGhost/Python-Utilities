@@ -3,6 +3,7 @@
 import unittest
 from conf import Conf
 from AI import *
+from CommandProcessor import CommandProcessor
 
 class TestConfig(unittest.TestCase):
 
@@ -36,5 +37,19 @@ class TestAI(unittest.TestCase):
     model = NGram(self.corpus, 3)
     self.assertEqual(0.5, model.getProb("ran", "the cat"))
 
+class TestCommandProcessor(unittest.TestCase):
+  def setUp(self):
+    self.proc = CommandProcessor()
+
+  def test_addcmd(self):
+    self.assertEqual(1, self.proc.addCommand("test", "A test cmd", "No Usage"))
+    self.proc.addArgument("test", "name", "No help")
+    self.assertEqual("memes", self.proc.processCommand("test memes").name)
+    self.assertIsNone(self.proc.processCommand("meme test"))
+
+  def test_gethelp(self):
+    self.assertEqual(1, self.proc.addCommand("test", "A test cmd", "No Usage"))
+    self.assertNotEqual([], self.proc.getAllHelp())
+
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main(verbosity=2)
