@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
 import Skype4Py as skype
 import re
-from parse import *
-import parse
+import CommandProcessor
+import sys
 
 class Chat:
-  def __init__(self, cmd="!"):
+  def __init__(self, cmd="!", botname="TestBot"):
     self.s = skype.Skype()
     self.s.Attach()
     self.lastMessage = None
     self.cmd = cmd
+    self.botname = botname
     self.hooks = []
     self.commands = []
+    self.cmdProc = CommandProcessor.CommandProcessor()
     try:
       self.chat = self.s.ActiveChats[0]
-    except:
-      print("Cloud chat not supported!")
+    except Exception as e:
+      print("Cloud chat not supported! {}".format(e))
 
 
   def send(self, msg):
@@ -30,7 +32,7 @@ class Chat:
       self.processAsText()
 
   def processAsCommand(self):
-    pass
+    self.cmdProc.processCommand(self.lastMessage.Body.strip())
 
   def processAsText(self):
     m = self.lastMessage
@@ -40,33 +42,18 @@ class Chat:
         self.send(str(i))
 
   def addTrigger(self, triggerText, text, substring_match=False):
-    self.hooks.append(Trigger(triggerText, text, substring_match))
+    self.hooks.append(self.Trigger(triggerText, text, substring_match))
 
   def mainloop(self):
+    self.send("Starting {}".format(self.botname))
     while 1:
-      newmsg = self.chat.Messages[0]
-      if self.lastMessage != newmsg:
-        self.lastMessage = newmsg
-        self.processMessage()
-
-
-  class Command:
-    def __init__(self, cmd, func, helptext, syntax=''):
-      self.cmd = cmd
-      self.func = func
-      self.helptext = helptext
-      self.syntax = syntax
-      self.cmdparse = parse.compile(syntax)
-
-
-    def run(self, cmdtext):
-      pass
-       
-    def _run(self, args=None):
-      if args:
-        self.func(*args)
-      else:
-        self.func()
+      try:
+        newmsg = self.chat.Messages[0]
+        if self.lastMessage != newmsg:
+          self.lastMessage = newmsg
+          self.processMessage()
+      except KeyboardInterrupt:
+        sys.exit()
 
   class Trigger:
     def __init__(self, trigger, text, substring_match=False):

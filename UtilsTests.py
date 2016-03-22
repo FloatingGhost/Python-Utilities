@@ -37,6 +37,9 @@ class TestAI(unittest.TestCase):
     model = NGram(self.corpus, 3)
     self.assertEqual(0.5, model.getProb("ran", "the cat"))
 
+def testdef(val):
+  return val
+
 class TestCommandProcessor(unittest.TestCase):
   def setUp(self):
     self.proc = CommandProcessor()
@@ -44,12 +47,18 @@ class TestCommandProcessor(unittest.TestCase):
   def test_addcmd(self):
     self.assertEqual(1, self.proc.addCommand("test", "A test cmd", "No Usage"))
     self.proc.addArgument("test", "name", "No help")
-    self.assertEqual("memes", self.proc.processCommand("test memes").name)
-    self.assertIsNone(self.proc.processCommand("meme test"))
 
   def test_gethelp(self):
     self.assertEqual(1, self.proc.addCommand("test", "A test cmd", "No Usage"))
     self.assertNotEqual([], self.proc.getAllHelp())
+
+  def test_runcmd(self):
+    self.assertEqual(
+      self.proc.addCommand("def", "", "", testdef, ["testarg"]),
+      1
+    )
+    self.assertEqual("memes", self.proc.processCommand("def memes"))
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
