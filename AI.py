@@ -9,7 +9,7 @@ def listtostr(n):
   return k.strip()
 
 class NGram:
-  def __init__(self, corpus, n, debug=False):
+  def __init__(self, corpus, n, debug=True):
     self.debug = debug
     self.n = n
     if type(corpus) == type([]):
@@ -32,9 +32,6 @@ class NGram:
     corpus = [x for x in corpus.split(" ") if x != '']
     for i in range(len(corpus)-1):
       nlen.append(corpus[i:i+self.n])
-    if self.debug:
-      print(nlen)
-    
     self.model = []   
     endWords = []
     givenWords = []
