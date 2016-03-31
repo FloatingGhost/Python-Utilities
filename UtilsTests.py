@@ -4,7 +4,7 @@ import unittest
 from conf import Conf
 from AI import *
 from CommandProcessor import CommandProcessor
-
+from Reddit import *
 class TestConfig(unittest.TestCase):
 
   def setUp(self):
@@ -57,8 +57,13 @@ class TestCommandProcessor(unittest.TestCase):
       self.proc.addCommand("def", "", "", testdef, ["testarg"]),
       1
     )
-    self.assertEqual("memes", self.proc.processCommand("def memes"))
+    self.assertEqual("memes", self.proc.processCommand("!def memes"))
 
+class TestReddit(unittest.TestCase):
+  def setUp(self):
+    self.r = Reddit()
 
+  def test_getsub(self):
+    self.assertIsNotNone(self.r.getSub("funny"))
 if __name__ == '__main__':
     unittest.main(verbosity=2)
