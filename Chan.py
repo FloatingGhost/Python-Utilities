@@ -21,12 +21,12 @@ class FourChan:
     return [x for x in q if x != '']
 
   def scrub(self, post):
-    scrubs = ["<span class=\"quote\">", "<br>", "</span>"]
+    scrubs = ["<span class=\"quote\">", "<br>", "</span>","</s>"]
     
     for i in scrubs:
       post = post.replace(i, " ")
     post = post.replace("&gt;", ">").replace("&#039;", "'").replace("&quot;", "\"")
-    q = re.compile("<span [A-Za-z0-9\#\"\ \:\=]*</b>|com\/post\/[0-9]*|<a href=\"https\:\/\/boards|>>[0-9]*<\/a>|<a [\ \/a-z\=\"\#0-9]*>>>[0-9]*<\/a>|<a [\ a-z\=\"\#0-9]*>")
+    q = re.compile("</[ab]>|<span [A-Za-z0-9\#\"\ \:\=]*> *</?b>|com\/post\/[0-9]*|<a href=\"https\:\/\/boards|>>[0-9]*<\/a>|<a [\ \/a-z\=\"\#0-9]*>>>[0-9]*<\/a>|<a [\ \/a-z\=\"\#0-9]*>")
     for w in q.findall(post):
       post = post.replace(w, " ")
     return post
