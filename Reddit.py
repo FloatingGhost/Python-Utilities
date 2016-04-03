@@ -9,7 +9,7 @@ class Reddit:
   def getSub(self, subname, limit=100):
     return self.api.get_subreddit(subname).get_hot(limit=limit)
 
-  def getOPs(self, subname, limit=100):
+  def getOPs(self, subname, limit=20):
     x = self.getSub(subname, limit)
     return [y.selftext for y in x if y.selftext != '']
 

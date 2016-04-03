@@ -9,7 +9,7 @@ def listtostr(n):
   return k.strip()
 
 class NGram:
-  def __init__(self, corpus, n, debug=True):
+  def __init__(self, corpus, n, debug=False):
     self.debug = debug
     self.n = n
     if type(corpus) == type([]):

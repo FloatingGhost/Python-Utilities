@@ -42,10 +42,10 @@ def testdef(val):
 
 class TestCommandProcessor(unittest.TestCase):
   def setUp(self):
-    self.proc = CommandProcessor()
+    self.proc = CommandProcessor(debug=True)
 
   def test_addcmd(self):
-    self.assertEqual(1, self.proc.addCommand("test", "A test cmd", "No Usage"))
+    self.assertEqual(1, self.proc.addCommand("test", "A test cmd", print, "No Usage"))
     self.proc.addArgument("test", "name", "No help")
 
   def test_gethelp(self):
@@ -58,7 +58,16 @@ class TestCommandProcessor(unittest.TestCase):
       1
     )
     self.assertEqual("memes", self.proc.processCommand("!def memes"))
+  
+  def test_loadmodule(self):
+    self.proc.loadModule("testmodule")
+    self.assertEqual(1, self.proc.processCommand("!a"))
 
+  def test_unloadmodule(self):
+    self.assertTrue(self.proc.loadModule("testmodule"))
+    self.assertEqual(1, self.proc.processCommand("!a"))
+    self.assertTrue(self.proc.unloadModule("testmodule"))
+    self.assertIsNone(self.proc.processCommand("!a"))
 class TestReddit(unittest.TestCase):
   def setUp(self):
     self.r = Reddit()

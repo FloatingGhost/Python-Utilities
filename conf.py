@@ -58,6 +58,10 @@ class Conf:
         print("Setting '{}' not found!".format(key))
       return 0
 
+  def getData(self, key):
+    x=self.getValue(key)
+    return eval(x)
+
   def setValue(self, key, value):
     if key == "":
       if self.verbose:
