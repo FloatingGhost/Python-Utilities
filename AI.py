@@ -3,12 +3,14 @@ import random
 
 
 def listtostr(n):
+  """Turn [1,2,3] to "1 2 3"""
   k = ""
   for i in n:
     k += i + " "
   return k.strip()
 
-class NGram:
+class NGram: 
+  """Class for an N-Gram model of a natural language corpus"""
   def __init__(self, corpus, n, debug=False):
     self.debug = debug
     self.n = n
@@ -17,6 +19,7 @@ class NGram:
     else:
       self.buildModel([corpus])
   def buildModel(self, list_corpus):
+    """Build a model from a list of strings"""
     #Pad out the message
     
     corpus = "" 
@@ -58,12 +61,14 @@ class NGram:
         self.model.append(modelAdd)
 
   def generate(self):
+    """Generate a possible message from the model"""
     m = "<s>"
     while m.split(" ")[-1] != "<end>":
       m += " " + random.choice(self.getAllFromGiven(m.split(" ")[-self.n+1:])) 
     return m.replace("<s>","").replace("<end>","")
      
   def getAllFromGiven(self, given):
+    """Get all instances of x, where (given, x) is a member of the model"""
     j = []
     for i in self.model:
       if i[1] == given:
@@ -71,6 +76,7 @@ class NGram:
     return j
 
   def getProb(self, word, given):
+    """Get P(word|given)"""
     ##Find P(word | given)
     for i in self.model:
       g = listtostr(i[1])
