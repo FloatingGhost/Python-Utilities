@@ -38,7 +38,7 @@ class TestAI(unittest.TestCase):
     self.assertEqual(0.5, model.getProb("ran", "the cat"))
 
 def testdef(val):
-  return val
+  yield val
 
 class TestCommandProcessor(unittest.TestCase):
   def setUp(self):
@@ -57,17 +57,19 @@ class TestCommandProcessor(unittest.TestCase):
       self.proc.addCommand("def", "", "", testdef, ["testarg"]),
       1
     )
-    self.assertEqual("memes", self.proc.processCommand("!def memes"))
+    print([x for x in self.proc.processCommand("!def memes")])
+    self.assertEqual("memes", next(self.proc.processCommand("!def memes")))
   
   def test_loadmodule(self):
-    self.proc.loadModule("testmodule")
-    self.assertEqual(1, self.proc.processCommand("!a"))
+    self.assertTrue(next(self.proc.loadModule("testmodule")))
+    print(next(self.proc.processCommand("!a")))
+    self.assertEqual(1, next(self.proc.processCommand("!a")))
 
   def test_unloadmodule(self):
-    self.assertTrue(self.proc.loadModule("testmodule"))
-    self.assertEqual(1, self.proc.processCommand("!a"))
-    self.assertTrue(self.proc.unloadModule("testmodule"))
-    self.assertIsNone(self.proc.processCommand("!a"))
+    self.assertTrue(next(self.proc.loadModule("testmodule")))
+    self.assertEqual(1, next(self.proc.processCommand("!a")))
+    self.assertTrue(next(self.proc.unloadModule("testmodule")))
+    self.assertEqual("Command not found", next(self.proc.processCommand("!a")))
 class TestReddit(unittest.TestCase):
   def setUp(self):
     self.r = Reddit()

@@ -5,6 +5,9 @@ import CommandProcessor
 import sys
 import threading
 
+p = print
+def print(msg):
+  p("(skype) {}".format(msg))
 class Chat:
   """Represents a chat class in a skype client"""
   def __init__(self, cmd="!", botname="TestBot", msg_prefix="BOT: ", 
@@ -27,7 +30,7 @@ class Chat:
     
     ##Create a processor for all possible commands
     self.cmdProc = CommandProcessor.CommandProcessor(",", cmd, modulePath,
-                    admins=admins)
+                    admins=admins,debug=True)
 
     ##Try to connect to the chat
     try:
@@ -46,7 +49,9 @@ class Chat:
     if init_modules != []:
       self.send("Initialising modules...")
       for i in init_modules:
+        print("Loading '{}'".format(i))
         self.loadModule(i)
+        print("Loaded '{}'".format(i))
       self.send("Initalisation succesful!")
 
   def addCommonCommands(self):
@@ -71,13 +76,14 @@ class Chat:
 
   def loadModule(self, module):
     """Try to load a module from modulepath"""
-
+    print("Trying to load {}".format(module))
     self.send("Attempting to load {}".format(module))
     x = self.cmdProc.loadModule(module)
+    x = next(x)
     if x:
-      self.send("Loaded {}".format(module))
+      yield ("Loaded {}".format(module))
     else:
-      self.send("Failed to load {}".format(module))
+      yield ("Failed to load {}".format(module))
 
   def unloadModule(self, module):
     """Unload a module - for reloading"""
@@ -85,9 +91,9 @@ class Chat:
     self.send("Attempting to unload {}".format(module))
     x = self.cmdProc.unloadModule(module)
     if x:
-      return "unloaded {}".format(module)
+      yield "unloaded {}".format(module)
     else:
-      return "Failed to unload {}".format(module)
+      yield "Failed to unload {}".format(module)
 
   def reloadModule(self, module):
     """Reload a module"""
@@ -96,11 +102,10 @@ class Chat:
     self.unloadModule(module)
     self.send("Reloading {}".format(module))
     self.loadModule(module)
-    return "Reloaded {}".format(module)
+    yield "Reloaded {}".format(module)
 
   def exit(self):
     """Shut the bot down"""
-
     self.send("{} going to sleep".format(self.botname))
     sys.exit(1)
 
@@ -117,7 +122,8 @@ class Chat:
   
   def send(self, msg):
     """Send a message to the chat"""
-    self.chat.SendMessage("{}: {}".format(self.msg_prefix, msg))
+    if msg != None and msg != "":
+      self.chat.SendMessage("{}: {}".format(self.msg_prefix, msg))
 
   def processMessage(self):
     """Figure out what to do with the last recieved message"""
@@ -137,7 +143,8 @@ class Chat:
     x=(self.cmdProc.processCommand(self.lastMessage.Body.strip(),
                                    username=self.lastMessage.FromHandle))
     if x:
-      self.send(x)
+      for v in x:
+        self.send(v)
     else:
       self.send("Command not found :c")
 

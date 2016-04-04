@@ -4,6 +4,11 @@ import re
 import argparse
 import sys
 import importlib
+import traceback
+
+p = print
+def print(msg):
+  p("(cmdproc) {}".format(msg))
 
 class CommandProcessor:
   """A class to generically process commands, as defined by a list of commands and
@@ -70,6 +75,7 @@ class CommandProcessor:
   def loadModule(self, name):
     """Load an external module from modulepath"""
     try:
+      print("Loading {}".format(name))
       ##Try loading the module as i
       i = importlib.import_module(name)
       ##In case it's changed and was imported before, reload it 
@@ -85,6 +91,7 @@ class CommandProcessor:
     
       ##Load the functions in
       for j in z:
+        print("Adding {}".format(j))
         try:
           ##this will actually get the function object, not just its name
           k = eval(j)
@@ -97,24 +104,27 @@ class CommandProcessor:
         except:
           ##In case it wasn't actually a function object
           pass
-      return True
+      print("Succesfully inserted {}".format(name))
+      yield True
     except Exception as e:
       if self.debug:
         print("Failed with {}".format(e))
-      return False
+      yield False
 
   def unloadModule(self, name):
     """Unload an entire external module"""
     try:
+      print("Unloading {}".format(name))
       i = importlib.import_module(name)
       funcs = dir(i)      
       x = re.compile("__[a-z]*__")
       z = ([("i.{}".format(y)) for y in funcs if not x.match(y)])
       for j in z:         
         self.removeCommand(j.split(".")[-1])
-      return True  
+      yield True  
+      print("Succesfully unloaded {}".format(name))
     except Exception as e:
-      return False
+      yield False
 
   def addArgument(self, cmdName, varName, help="", var_type=str):
     """Add an argument to a function argument processor"""
@@ -143,23 +153,28 @@ class CommandProcessor:
       ##We don't know of the command
       if self.debug:
         print("No key")
-      return None
+        yield "Command not found"
 
     try:
       ##Try to get the arguments from the string
       args = parser.parse_args([x for x in args.split(self.delimiter) if x!=''])
-    except:
+
+      ##Run the command
+      running = self.run(com,args,username)
+      for value in running:
+        yield value
+    except Exception as e:
       ##for if we failed to parse 
-      return self.getHelp(cmd)
+      yield self.getHelp(cmd)
     
-    ##Run the command
-    return self.run(com,args,username)
 
   def run(self, com, args,username):
     """A wrapper to run the command"""
 
-    return self.runCommand(com, vars(args),username=username)
-  
+    r = self.runCommand(com, vars(args),username=username)
+    for value in r:
+      yield value
+
   def runCommand(self, com, arglist,username=""):
     """Run a command"""
 
@@ -183,20 +198,22 @@ class CommandProcessor:
       y = func(*x)
       if y == None:
         ##In case func doesn't return anything
-        return "ok"
+        yield "ok"
       else:
         ##Return func()
-        return y
+        for v in y:
+          yield v
     except Exception as e:
       if self.debug:
         print("Failed, {}".format(e))
-      return self.getHelp(com)
+        traceback.print_stack()
+      yield self.getHelp(com)
 
   def addFunc(self, funcname, func, argslist, need_admin):
     """Add a function to the command processor"""
 
     if self.debug:
-      print("Adding function: {} / {}({})".format(funcname, func, argslist))
+      print("Adding function: {} /({})".format(funcname, argslist))
 
     ##Associate the function name with the function
     self.functions[funcname] = [func, argslist, need_admin]
