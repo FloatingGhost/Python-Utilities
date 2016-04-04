@@ -5,11 +5,7 @@ import re
 
 class Twitter:
   def __init__(self):
-    consumer_key = "O2oCD1Uop8yL8Noidvhvnwb7i"
-    consumer_secret = "DRHWCKmb9Ae3ZZr7H6MAkmCyJxbThRxrujWqVnB119Vbw7ukEw"
-
-    access_token = "88449821-dzVb1b22HKS0zetoU8nnmkVYfuNxjW3Lnx4BG97L5"
-    access_token_secret = "QmqcKU80AqLVfnivg0APMPAl4h0taBQjLgpmPPERajJf0"
+    [keys redacted]
 
     auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
     auth.set_access_token(access_token, access_token_secret)
