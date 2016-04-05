@@ -11,6 +11,10 @@ class Chat:
                 processFunction=None, modulePath=".", admins=[], init_modules=[]):
 
     self.log = Log()    
+    self.log.setLevel(self.log.DEBUG)
+    self.log.info("Starting {}".format(botname))
+    self.log.debug("Command prefix is set to '{}'".format(cmd))
+    self.log.debug("Message Prefix is set to '{}'".format(msg_prefix))
     ##Create the skype instance
     self.s = skype.Skype()
     
@@ -41,71 +45,22 @@ class Chat:
     self.send("Starting {}".format(botname))
 
     ##Initial setup
-    self.addCommonCommands()
+    self.addCommand("setprefix", "Set the bot's prefix", "setprefix [prefix]",
+                    self.setPrefix, ["prefix"])
+    self.addCommand("list", "list triggers", "list", self.listTriggers)
+    self.addCommand("trig", "Add a trigger", "trig x y", self.addTrigger, ["t", "tr"])
 
     ##Load any default modules
     if init_modules != []:
       self.send("Initialising modules...")
       for i in init_modules:
-        print("Loading '{}'".format(i))
-        self.loadModule(i)
-        print("Loaded '{}'".format(i))
+        self.cmdProc.loadModule(i)
       self.send("Initalisation succesful!")
 
-  def addCommonCommands(self):
-    """Add bot configuration commands"""
-    self.addCommand("list", "list triggers", "list", self.listTriggers)
-    self.addCommand("help", "get help", "help", self.getHelp, ["prgrm"])
-    self.addCommand("quit", "quit", "quit", self.exit,need_admin=True)
-    self.addCommand("trig", "Add a trigger", "trig x y", self.addTrigger, ["t", "tr"])
-    self.addCommand("import", "Import a module", "import [module]", 
-                    self.loadModule, ["mod"])
-    self.addCommand("unload", "Unload a module", "unload [module]",
-                    self.unloadModule, ["mod"])
-    self.addCommand("reload", "Reload a module", "reload [module]", self.reloadModule,
-                    ["mod"])          
-    self.addCommand("setprefix", "Set the bot's prefix", "setprefix [prefix]",
-                    self.setPrefix, ["prefix"])
-    
   def setPrefix(self, pre):
     """Set the icon for the bot to send with"""
     self.msg_prefix = pre
     self.send("Set!")
-
-  def loadModule(self, module):
-    """Try to load a module from modulepath"""
-    print("Trying to load {}".format(module))
-    self.send("Attempting to load {}".format(module))
-    x = self.cmdProc.loadModule(module)
-    x = next(x)
-    if x:
-      yield ("Loaded {}".format(module))
-    else:
-      yield ("Failed to load {}".format(module))
-
-  def unloadModule(self, module):
-    """Unload a module - for reloading"""
-
-    self.send("Attempting to unload {}".format(module))
-    x = self.cmdProc.unloadModule(module)
-    if x:
-      yield "unloaded {}".format(module)
-    else:
-      yield "Failed to unload {}".format(module)
-
-  def reloadModule(self, module):
-    """Reload a module"""
-    
-    self.send("Unloading {}".format(module))
-    self.unloadModule(module)
-    self.send("Reloading {}".format(module))
-    self.loadModule(module)
-    yield "Reloaded {}".format(module)
-
-  def exit(self):
-    """Shut the bot down"""
-    self.send("{} going to sleep".format(self.botname))
-    sys.exit(1)
 
   def getHelp(self, cmd):
     """Get the help text for cmd"""
@@ -120,7 +75,7 @@ class Chat:
   
   def send(self, msg):
     """Send a message to the chat"""
-    if msg != None and msg != "":
+    if msg != None and msg != "" and type(msg) != type(True):
       self.chat.SendMessage("{}: {}".format(self.msg_prefix, msg))
 
   def processMessage(self):

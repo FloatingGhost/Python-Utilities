@@ -11,7 +11,7 @@ def listtostr(n):
 
 class NGram: 
   """Class for an N-Gram model of a natural language corpus"""
-  def __init__(self, corpus, n, debug=False):
+  def __init__(self, corpus, n, debug=False, model=None):
     self.log = Log()
     
     if debug:
@@ -19,11 +19,14 @@ class NGram:
     
     self.n = n
     self.log.info("Initialising {}-Gram model...".format(n))   
-  
-    if type(corpus) == type([]):
-      self.buildModel(corpus)
+    
+    if model:
+      self.model = model
     else:
-      self.buildModel([corpus])
+      if type(corpus) == type([]):
+        self.buildModel(corpus)
+      else:
+        self.buildModel([corpus])
   def buildModel(self, list_corpus):
     """Build a model from a list of strings"""
     #Pad out the message

@@ -22,6 +22,7 @@ class Conf:
     self.sep = sep
     self._readFile()
     self._extractConfig()
+    self.log.info("Succesfully parsed {}".format(filename))
     
   def _readFile(self):
     """Read in the configuration file"""

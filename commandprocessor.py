@@ -22,7 +22,32 @@ class CommandProcessor:
     self.admins = admins
     if debug:
       self.log.setLevel(self.log.DEBUG)
-      
+    self._addConfigCommands()
+
+  def _addConfigCommands(self):
+    """Add bot configuration commands"""
+    self.log.info("Adding common commands...")
+    self.addCommand("help", "get help", "help", self.getHelp, ["prgrm"])
+    self.addCommand("quit", "quit", "quit", self.exit,need_admin=True)
+    self.addCommand("import", "Import a module", "import [module]",
+                    self.loadModule, ["mod"])
+    self.addCommand("unload", "Unload a module", "unload [module]",
+                    self.unloadModule, ["mod"])
+    self.addCommand("reload", "Reload a module", "reload [module]", self.reloadModule,
+                    ["mod"])
+    self.log.info("Added common commands.")
+
+  def reloadModule(self, name):
+    self.log.info("Reloading {}".format(name))
+    self.unloadModule(name)
+    self.loadModule(name)
+    self.log.info("Reloaded.")
+
+  def exit(self):
+    """Shut the bot down"""
+    yield ("Going to sleep.")
+    sys.exit(1)
+
   def addCommand(self, name, description="", usage="", func=None, arglist=[], 
                  need_admin=False):
     """Add a command to our list
@@ -71,19 +96,24 @@ class CommandProcessor:
 
   def loadModule(self, name):
     """Load an external module from modulepath"""
+    
+    self.log.info("Loading module {}".format(name))
+
     try:
-      self.log.info("Loading module {}".format(name))
       ##Try loading the module as i
+      self.log.debug("Importing...")
       i = importlib.import_module(name)
       ##In case it's changed and was imported before, reload it 
+      self.log.debug("Reloading...")
       i = importlib.reload(i)
       ##Get a list of all the functions defined in the module
+      self.log.debug("Getting functions...")
       funcs = dir(i)
       ##Don't import python's internal functions, like __name__ and __init__
       x = re.compile("__[a-z]*__")
       z = ([("i.{}".format(y)) for y in funcs if not x.match(y)])
 
-    
+      self.log.debug("Loaded, adding functions...")
       ##Load the functions in
       for j in z:
         self.log.debug("Adding function {}.{}".format(name,j))
@@ -96,10 +126,13 @@ class CommandProcessor:
           num = k.__code__.co_argcount
           ##Throw the function and arguments over to our addCommand 
           self.addCommand(j.split(".")[-1], func=k, arglist=args[:num])
-        except:
+          self.log.debug("Sucessfully added function '{}'".format(j.split(".")[-1]))
+        except Exception as ex:
           ##In case it wasn't actually a function object
-          pass
+          traceback.print_exc()
       self.log.info("Succesfully inserted {}".format(name))
+      yield "Inserted module {}".format(name)
+
       yield True
     except Exception as e:
       self.log.error("Failed with {}".format(e))
@@ -107,13 +140,14 @@ class CommandProcessor:
 
   def unloadModule(self, name):
     """Unload an entire external module"""
+    self.log.info("Unloading module {}".format(name))
     try:
-      self.log.info("Unloading {}".format(name))
       i = importlib.import_module(name)
       funcs = dir(i)      
       x = re.compile("__[a-z]*__")
       z = ([("i.{}".format(y)) for y in funcs if not x.match(y)])
-      for j in z:         
+      for j in z: 
+        self.log.debug("Removing {}".format(j))        
         self.removeCommand(j.split(".")[-1])
       yield True  
       self.log.info("Succesfully unloaded {}".format(name))
@@ -155,11 +189,13 @@ class CommandProcessor:
     except Exception as e:
       ##for if we failed to parse 
       yield self.getHelp(cmd)
-    
+    except SystemExit:
+      if com == "quit":
+        sys.exit()
+      yield self.getHelp(cmd)
 
   def run(self, com, args,username):
     """A wrapper to run the command"""
-
     r = self.runCommand(com, vars(args),username=username)
     for value in r:
       yield value
@@ -180,10 +216,12 @@ class CommandProcessor:
       ##Make sure that if we need admin, the user has it
       if adm:
         if username not in self.admins:
-          return "Permission denied - User {} not admin".format(username)
+          self.log.warning("User is not admin, failing")
+          yield "Permission denied - User {} not admin".format(username)
       
       ##Unpack the args and run the function
       y = func(*x)
+      self.log.debug("Running {} with arguments ({})".format(com, x))
       if y == None:
         ##In case func doesn't return anything
         yield "ok"
@@ -217,4 +255,4 @@ class CommandProcessor:
     x = ""
     for i in self.parsers:
       x += self.parsers[i].usage + "\n"
-    return x
+    yield x
