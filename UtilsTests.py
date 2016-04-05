@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import unittest
-from conf import Conf
+from conf import Conf,YamlConf
 from AI import *
 from CommandProcessor import CommandProcessor
 from Reddit import *
@@ -24,6 +24,17 @@ class TestConfig(unittest.TestCase):
   def test_write(self):
     self.assertTrue(self.c.setValue("memes", "lel"))
     self.c.writeFile('newtestconf.conf')
+
+class TestYAMLConf(unittest.TestCase):
+  def setUp(self):
+    self.c = YamlConf("YamlConfig.conf")
+
+  def test_getvalue(self):
+    self.assertEqual(3,self.c.getValue("magic", "c", "d"))
+    self.assertEqual(1,self.c.getValue("test", "a"))
+
+  def test_getnonexistantvalue(self):
+    self.assertIsNone(self.c.getValue("hello"))
 
 class TestAI(unittest.TestCase):
   def setUp(self):
@@ -76,5 +87,8 @@ class TestReddit(unittest.TestCase):
 
   def test_getsub(self):
     self.assertIsNotNone(self.r.getSub("funny"))
+
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

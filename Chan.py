@@ -2,25 +2,35 @@
 
 import basc_py4chan as chan
 import re
+from log import Log
 
 class FourChan:
+  """Wrapper class to py4chan - 4chan API"""
+
   def __init__(self, board):
-    print("Training!")
-    self.board = chan.Board(board)
+    self.log = Log()
+    self.log.info("Getting /{}/...".format(board))  
+    try:
+      self.board = chan.Board(board)
+      self.log.info("/{}/ was fetched succesfully".format(board))
+    except Exception as e:
+      self.log.error("Failed to fetch /{}/ -- {}".format(board, e))
 
   def getPosts(self,limit=10):
+    self.log.info("Getting posts - limit of {}".format(limit))
     return self.board.get_all_thread_ids()[:limit+1]
 
   def getTitles(self):
-    print("Getting titles!")
+    self.log.info("Getting thread titles...")
     q = []
     for x in self.getPosts():
       b = self.board.get_thread(x).posts
-      q += [self.scrub(y.comment) for y in b]
-    print("Got posts")
+      q += [self._scrub(y.comment) for y in b]
+    self.log.info("Got titles of threads succesfully")
     return [x for x in q if x != '']
 
-  def scrub(self, post):
+  def _scrub(self, post):
+    """Clean up the posts, remove all HTML and formatting"""
     scrubs = ["<span class=\"quote\">", "<br>", "</span>","</s>"]
     
     for i in scrubs:
@@ -30,7 +40,3 @@ class FourChan:
     for w in q.findall(post):
       post = post.replace(w, " ")
     return post
-
-if __name__ == "__main__":
-    c = Chan("g")
-    print(c.getTitles())
