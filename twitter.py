@@ -2,10 +2,15 @@
 
 import tweepy
 import re
+from conf import Conf
 
 class Twitter:
   def __init__(self):
-    [keys redacted]
+    keyconf = Conf("twitter-config.conf")
+    consumer_key=keyconf.getValue("consumer_key")
+    consumer_secret=keyconf.getValue("consumer_secret")
+    access_token=keyconf.getValue("access_token")
+    access_token_secret=keyconf.getValue("access_token_secret")
 
     auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
     auth.set_access_token(access_token, access_token_secret)

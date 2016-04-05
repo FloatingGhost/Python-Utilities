@@ -2,9 +2,10 @@
 
 import unittest
 from conf import Conf,YamlConf
-from AI import *
-from CommandProcessor import CommandProcessor
-from Reddit import *
+from aiutils import *
+from commandprocessor import CommandProcessor
+from reddit import *
+
 class TestConfig(unittest.TestCase):
 
   def setUp(self):

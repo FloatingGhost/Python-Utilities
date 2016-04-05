@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
 import Skype4Py as skype
 import re
-import CommandProcessor
+import commandprocessor
 import sys
 import threading
-
-p = print
-def print(msg):
-  p("(skype) {}".format(msg))
+from log import Log
 class Chat:
   """Represents a chat class in a skype client"""
   def __init__(self, cmd="!", botname="TestBot", msg_prefix="BOT: ", 
                 processFunction=None, modulePath=".", admins=[], init_modules=[]):
-    
+
+    self.log = Log()    
     ##Create the skype instance
     self.s = skype.Skype()
     
@@ -29,7 +27,7 @@ class Chat:
     self.processFunction = processFunction 
     
     ##Create a processor for all possible commands
-    self.cmdProc = CommandProcessor.CommandProcessor(",", cmd, modulePath,
+    self.cmdProc = commandprocessor.CommandProcessor(",", cmd, modulePath,
                     admins=admins,debug=True)
 
     ##Try to connect to the chat

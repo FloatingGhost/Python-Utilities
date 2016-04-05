@@ -102,7 +102,7 @@ class CommandProcessor:
       self.log.info("Succesfully inserted {}".format(name))
       yield True
     except Exception as e:
-      self.log.warning("Failed with {}".format(e))
+      self.log.error("Failed with {}".format(e))
       yield False
 
   def unloadModule(self, name):
@@ -192,7 +192,8 @@ class CommandProcessor:
         for v in y:
           yield v
     except Exception as e:
-      self.log.warning("Failed, {}".format(e))
+      self.log.error("Failed, {}".format(e))
+      traceback.print_exc()
       yield self.getHelp(com)
 
   def addFunc(self, funcname, func, argslist, need_admin):
