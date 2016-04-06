@@ -2,7 +2,7 @@
 import random
 from log import Log
 
-def listtostr(n):
+def listtostr_(n):
   """Turn [1,2,3] to "1 2 3"""
   k = ""
   for i in n:
@@ -27,6 +27,8 @@ class NGram:
         self.buildModel(corpus)
       else:
         self.buildModel([corpus])
+    self.log.info("{}-Gram model ready for use".format(self.n))
+
   def buildModel(self, list_corpus):
     """Build a model from a list of strings"""
     #Pad out the message
@@ -98,7 +100,7 @@ class NGram:
     """Get P(word|given)"""
     ##Find P(word | given)
     for i in self.model:
-      g = listtostr(i[1])
+      g = listtostr_(i[1])
       if i[0] == word and given == g:
         return i[2]
     return 0

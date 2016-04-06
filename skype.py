@@ -5,16 +5,20 @@ import commandprocessor
 import sys
 import threading
 from log import Log
+import traceback
 class Chat:
   """Represents a chat class in a skype client"""
   def __init__(self, cmd="!", botname="Generic Bot", msg_prefix="BOT: ", 
-                processFunction=None, modulePath=".", admins=[], init_modules=[],
-                debug=False):
+                processFunction=None, modulePath=".", admins=[], init_modules=None,
+                init_triggers=None, debug=False):
 
     self.log = Log()    
     if debug:
       self.log.info("DEBUGGING ON")
       self.log.setLevel(self.log.DEBUG)
+    ##For other modules
+    __builtins__["chat"] = self
+
     self.log.newline()
     self.log.info("SKYPE BOT INIT")
     self.log.line("+",40)
@@ -60,7 +64,7 @@ class Chat:
  
     ##Alert users to the bot's presence
     self.send("Starting {}".format(botname))
-
+    self.log.info("Adding admin commands...")
     ##Initial setup
     self.addCommand("setprefix", "Set the bot's prefix", "setprefix [prefix]",
                     self.setPrefix, ["prefix"])
@@ -68,12 +72,18 @@ class Chat:
     self.addCommand("trig", "Add a trigger", "trig x y", self.addTrigger, ["t", "tr"])
 
     ##Load any default modules
-    if init_modules != []:
+    if init_modules:
+      self.log.info("Adding initial modules...")
       self.send("Initialising modules...")
       for i in init_modules:
         self.lastMessage.Body = "!import {}".format(i)
         self.processMessage()
- 
+    
+    if init_triggers:
+      self.log.info("Adding initial triggers...")
+      for i in init_triggers:
+        self.addTrigger(i, init_triggers[i])
+      
       self.send("Initalisation succesful!")
 
     self.log.line("+", 40)
@@ -137,6 +147,7 @@ class Chat:
           self.send(qq)
 
   def addTrigger(self, triggerText, text, substring_match=False):
+    self.log.info("Adding trigger ({}) -> ({})".format(triggerText, text))
     self.hooks.append(self.Trigger(triggerText, text, self.msg_prefix, substring_match))
     return "Done!"
 

@@ -3,6 +3,7 @@
 import basc_py4chan as chan
 import re
 from log import Log
+import pickle
 
 class FourChan:
   """Wrapper class to py4chan - 4chan API"""
@@ -36,7 +37,11 @@ class FourChan:
     for i in scrubs:
       post = post.replace(i, " ")
     post = post.replace("&gt;", ">").replace("&#039;", "'").replace("&quot;", "\"")
-    q = re.compile("</[ab]>|<span [A-Za-z0-9\#\"\ \:\=]*> *</?b>|com\/post\/[0-9]*|<a href=\"https\:\/\/boards|>>[0-9]*<\/a>|<a [\ \/a-z\=\"\#0-9]*>>>[0-9]*<\/a>|<a [\ \/a-z\=\"\#0-9]*>")
+    post = post.replace("&lt;", "<")
+    q = re.compile("<\/?[A-Za-z0-9\/\=\#\"\': ]*>")
     for w in q.findall(post):
-      post = post.replace(w, " ")
-    return post
+      post = post.replace(w, "")
+    postnums = re.compile(">?[0-9]{4,}")
+    for w in postnums.findall(post):
+      post = post.replace(w, "")
+    return post.replace(">\n","").replace("\n", "")

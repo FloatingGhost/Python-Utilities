@@ -24,6 +24,7 @@ class CommandProcessor:
     self.parsers = {}
     self.delimiter = delimiter
     self.functions = {}
+    self.modules = []
     self.prefix = prefix
     ##Add the module path to PYTHONPATH
     sys.path.insert(0, modulePath)
@@ -47,6 +48,9 @@ class CommandProcessor:
                     self.unloadModule, ["mod"])
     self.addCommand("reload", "Reload a module", "reload [module]", self.reloadModule,
                     ["mod"])
+    self.addCommand("isadmin", "Check if a user is an admin", "isadmin [username]",
+                    self.isAdmin, ["username"])
+    self.addCommand("lsmod", "List currently loaded modules", "lsmod", self.lsmod)
     self.log.decIndent()
     self.log.info("Sucesfully added common commands.")
 
@@ -57,6 +61,12 @@ class CommandProcessor:
     self.loadModule(name)
     self.log.decIndent()
     self.log.info("↻↻ Succesfully reloaded {} ↻↻".format(name))
+    yield "Reloaded {}".format(name)
+
+  def lsmod(self):
+    x = "Currently loaded modules:\n"
+    y = "\n".join(self.modules)
+    yield x+y
 
   def exit(self):
     """Shut the bot down"""
@@ -77,6 +87,9 @@ class CommandProcessor:
           0 on Success
           1 on Faliure"""
 
+    name = name.lower()
+    if name[-1] == "_":
+      return 0
     #If the user doesn't provide a function, we can't do anything
     if not func:
       self.log.warning("No function provided for {}.".format(name))
@@ -136,16 +149,19 @@ class CommandProcessor:
       for j in z:
         self.log.debug("Adding function {}.{}".format(name,j))
         try:
-          ##this will actually get the function object, not just its name
-          k = eval(j)
-          ##Get the variables used in the function
-          args = k.__code__.co_varnames
-          ##Get the number of arguments the function expects
-          num = k.__code__.co_argcount
-          ##Throw the function and arguments over to our addCommand 
-          funcs = "{}!{}, ".format(funcs, j.split(".")[-1])
-          self.addCommand(j.split(".")[-1], func=k, arglist=args[:num])
-          self.log.debug("Sucessfully added function '{}'".format(j.split(".")[-1]))
+          if j[-1] != "_":
+            ##this will actually get the function object, not just its name
+            k = eval(j)
+            ##Get the variables used in the function
+            args = k.__code__.co_varnames
+            ##Get the number of arguments the function expects
+            num = k.__code__.co_argcount
+            ##Throw the function and arguments over to our addCommand
+            l = j.split(".")[-1].lower() 
+            funcs = "{}!{}{}, ".format(funcs, l,
+                                      "(ADMIN)" if l[0] == "_" else "")
+            self.addCommand(l, func=k, arglist=args[:num])
+            self.log.debug("Sucessfully added function '{}'".format(l))
         except Exception as ex:
           ##In case it wasn't actually a function object
           pass
@@ -155,6 +171,7 @@ class CommandProcessor:
       self.log.info("LOADED {} SUCCESFULLY".format(name.upper()))
       self.log.newline()
       yield "Inserted module {} ({})".format(name, funcs[:-2])
+      self.modules.append(name)
       yield True
     except Exception as e:
       self.log.error("!!! Failed with {} !!!".format(e))
@@ -172,6 +189,7 @@ class CommandProcessor:
         self.log.debug("  Removing {}".format(j))        
         self.removeCommand(j.split(".")[-1])
       yield True  
+      self.modules.remove(name)
       self.log.info("-- Succesfully unloaded {} --".format(name))
     except Exception as e:
       yield False
@@ -278,3 +296,6 @@ class CommandProcessor:
     for i in self.parsers:
       x += self.parsers[i].usage + "\n"
     yield x
+
+  def isAdmin(self, username):
+    yield "{} is{} an admin.".format(username, " not" if (not username.lower() in self.admins) else "")
