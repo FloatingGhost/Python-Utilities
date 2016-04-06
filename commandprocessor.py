@@ -7,12 +7,20 @@ import importlib
 import traceback
 from log import Log
 
+def listtostr(n):
+  return ",".join(n)
+
 class CommandProcessor:
   """A class to generically process commands, as defined by a list of commands and
      argparse parsers - used to extract arguments from a string"""
 
   def __init__(self, delimiter=",", prefix="!", modulePath=".", debug=False, admins=[]):
     self.log = Log()
+    self.log.info("Command Processor Created, prefix {}".format(prefix))
+    self.log.newline()
+    self.log.info("CMDPROC INIT")
+    self.log.line()
+    self.log.incIndent()
     self.parsers = {}
     self.delimiter = delimiter
     self.functions = {}
@@ -23,10 +31,14 @@ class CommandProcessor:
     if debug:
       self.log.setLevel(self.log.DEBUG)
     self._addConfigCommands()
+    self.log.line()
+    self.log.info("FINISHED CMDPROC INIT")   
+    self.log.newline()
 
   def _addConfigCommands(self):
     """Add bot configuration commands"""
     self.log.info("Adding common commands...")
+    self.log.incIndent()
     self.addCommand("help", "get help", "help", self.getHelp, ["prgrm"])
     self.addCommand("quit", "quit", "quit", self.exit,need_admin=True)
     self.addCommand("import", "Import a module", "import [module]",
@@ -35,13 +47,16 @@ class CommandProcessor:
                     self.unloadModule, ["mod"])
     self.addCommand("reload", "Reload a module", "reload [module]", self.reloadModule,
                     ["mod"])
-    self.log.info("Added common commands.")
+    self.log.decIndent()
+    self.log.info("Sucesfully added common commands.")
 
   def reloadModule(self, name):
-    self.log.info("Reloading {}".format(name))
+    self.log.info("↻↻  Reloading {} ↻↻".format(name))
+    self.log.incIndent()
     self.unloadModule(name)
     self.loadModule(name)
-    self.log.info("Reloaded.")
+    self.log.decIndent()
+    self.log.info("↻↻ Succesfully reloaded {} ↻↻".format(name))
 
   def exit(self):
     """Shut the bot down"""
@@ -69,7 +84,7 @@ class CommandProcessor:
 
     #Check we haven't got the function already
     if not name in self.parsers:
-      self.log.info("Adding {}({})".format(name, arglist))
+      self.log.info("+ Adding {}( {} )".format(name, listtostr(arglist)))
       
       ##Add an argument parser for the function
       parser = argparse.ArgumentParser(description=description, usage=usage)
@@ -81,7 +96,7 @@ class CommandProcessor:
         self.addArgument(name, i)
      
       ##Finally, add the function to our list
-      self.addFunc(name, func, arglist, need_admin)
+      self.addFunc(name, func, arglist, need_admin or name[0] == "_")
       return 1
     else:
       return 0
@@ -96,12 +111,13 @@ class CommandProcessor:
 
   def loadModule(self, name):
     """Load an external module from modulepath"""
-    
-    self.log.info("Loading module {}".format(name))
-
+    self.log.newline() 
+    self.log.info("LOADING MODULE {}".format(name.upper())) 
+    self.log.line()
+    self.log.incIndent()
     try:
       ##Try loading the module as i
-      self.log.debug("Importing...")
+      self.log.debug("Importing {}...".format(name))
       i = importlib.import_module(name)
       ##In case it's changed and was imported before, reload it 
       self.log.debug("Reloading...")
@@ -114,6 +130,8 @@ class CommandProcessor:
       z = ([("i.{}".format(y)) for y in funcs if not x.match(y)])
 
       self.log.debug("Loaded, adding functions...")
+      self.log.incIndent()
+      funcs = ""
       ##Load the functions in
       for j in z:
         self.log.debug("Adding function {}.{}".format(name,j))
@@ -125,32 +143,36 @@ class CommandProcessor:
           ##Get the number of arguments the function expects
           num = k.__code__.co_argcount
           ##Throw the function and arguments over to our addCommand 
+          funcs = "{}!{}, ".format(funcs, j.split(".")[-1])
           self.addCommand(j.split(".")[-1], func=k, arglist=args[:num])
           self.log.debug("Sucessfully added function '{}'".format(j.split(".")[-1]))
         except Exception as ex:
           ##In case it wasn't actually a function object
-          traceback.print_exc()
-      self.log.info("Succesfully inserted {}".format(name))
-      yield "Inserted module {}".format(name)
-
+          pass
+      self.log.decIndent()
+      self.log.decIndent()
+      self.log.line()
+      self.log.info("LOADED {} SUCCESFULLY".format(name.upper()))
+      self.log.newline()
+      yield "Inserted module {} ({})".format(name, funcs[:-2])
       yield True
     except Exception as e:
-      self.log.error("Failed with {}".format(e))
+      self.log.error("!!! Failed with {} !!!".format(e))
       yield False
 
   def unloadModule(self, name):
     """Unload an entire external module"""
-    self.log.info("Unloading module {}".format(name))
+    self.log.info("-- Unloading module {} --".format(name))
     try:
       i = importlib.import_module(name)
       funcs = dir(i)      
       x = re.compile("__[a-z]*__")
       z = ([("i.{}".format(y)) for y in funcs if not x.match(y)])
       for j in z: 
-        self.log.debug("Removing {}".format(j))        
+        self.log.debug("  Removing {}".format(j))        
         self.removeCommand(j.split(".")[-1])
       yield True  
-      self.log.info("Succesfully unloaded {}".format(name))
+      self.log.info("-- Succesfully unloaded {} --".format(name))
     except Exception as e:
       yield False
 
@@ -216,7 +238,7 @@ class CommandProcessor:
       ##Make sure that if we need admin, the user has it
       if adm:
         if username not in self.admins:
-          self.log.warning("User is not admin, failing")
+          self.log.warning("  User is not admin, failing")
           yield "Permission denied - User {} not admin".format(username)
       
       ##Unpack the args and run the function
@@ -224,7 +246,7 @@ class CommandProcessor:
       self.log.debug("Running {} with arguments ({})".format(com, x))
       if y == None:
         ##In case func doesn't return anything
-        yield "ok"
+        yield None
       else:
         ##Return func()
         for v in y:

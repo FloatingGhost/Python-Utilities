@@ -123,7 +123,8 @@ class YamlConf:
     except yaml.YAMLError as e:
       self.log.error("File '{}' cannot be parsed!".format(filename))
       self.log.error("{}".format(e))
-  
+    self.log.info("{} YAML parsed succesfully".format(filename))
+ 
   def getValue(self, *keys):
     """Search through our data and find the specified key or subkey"""
 

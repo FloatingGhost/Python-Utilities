@@ -7,20 +7,34 @@ import threading
 from log import Log
 class Chat:
   """Represents a chat class in a skype client"""
-  def __init__(self, cmd="!", botname="TestBot", msg_prefix="BOT: ", 
-                processFunction=None, modulePath=".", admins=[], init_modules=[]):
+  def __init__(self, cmd="!", botname="Generic Bot", msg_prefix="BOT: ", 
+                processFunction=None, modulePath=".", admins=[], init_modules=[],
+                debug=False):
 
     self.log = Log()    
-    self.log.setLevel(self.log.DEBUG)
+    if debug:
+      self.log.info("DEBUGGING ON")
+      self.log.setLevel(self.log.DEBUG)
+    self.log.newline()
+    self.log.info("SKYPE BOT INIT")
+    self.log.line()
+    self.log.incIndent()
     self.log.info("Starting {}".format(botname))
     self.log.debug("Command prefix is set to '{}'".format(cmd))
     self.log.debug("Message Prefix is set to '{}'".format(msg_prefix))
+    self.log.debug("Module to load: {}".format(init_modules))
     ##Create the skype instance
+    self.log.newline()
+    self.log.info("SKYPE4PY STARTUP")
+    self.log.line()
+    self.log.incIndent()
     self.s = skype.Skype()
-    
     ##Connect to the API
     self.s.Attach()
-
+    self.log.decIndent()
+    self.log.line()
+    self.log.info("SKYPE4PY STARTED")
+    self.log.newline()
     ##Set initial variables
     self.lastMessage = None
     self.cmd = cmd
@@ -32,7 +46,7 @@ class Chat:
     
     ##Create a processor for all possible commands
     self.cmdProc = commandprocessor.CommandProcessor(",", cmd, modulePath,
-                    admins=admins,debug=True)
+                    admins=admins,debug=debug)
 
     ##Try to connect to the chat
     try:
@@ -40,7 +54,10 @@ class Chat:
     except Exception as e:
       print("Cloud chat not supported! {}".format(e))
       sys.exit(1)
-
+  
+    ##Allow for some twiddling
+    self.lastMessage = self.chat.Messages[0]
+ 
     ##Alert users to the bot's presence
     self.send("Starting {}".format(botname))
 
@@ -54,8 +71,14 @@ class Chat:
     if init_modules != []:
       self.send("Initialising modules...")
       for i in init_modules:
-        self.cmdProc.loadModule(i)
+        self.lastMessage.Body = "!import {}".format(i)
+        self.processMessage()
+ 
       self.send("Initalisation succesful!")
+
+    self.log.line()
+    self.log.info("FINISHED SKYPE BOT INIT")
+    self.log.newline()
 
   def setPrefix(self, pre):
     """Set the icon for the bot to send with"""
