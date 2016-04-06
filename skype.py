@@ -17,7 +17,7 @@ class Chat:
       self.log.setLevel(self.log.DEBUG)
     self.log.newline()
     self.log.info("SKYPE BOT INIT")
-    self.log.line()
+    self.log.line("+",40)
     self.log.incIndent()
     self.log.info("Starting {}".format(botname))
     self.log.debug("Command prefix is set to '{}'".format(cmd))
@@ -76,7 +76,7 @@ class Chat:
  
       self.send("Initalisation succesful!")
 
-    self.log.line()
+    self.log.line("+", 40)
     self.log.info("FINISHED SKYPE BOT INIT")
     self.log.newline()
 

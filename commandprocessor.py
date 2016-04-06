@@ -84,7 +84,7 @@ class CommandProcessor:
 
     #Check we haven't got the function already
     if not name in self.parsers:
-      self.log.info("+ Adding {}( {} )".format(name, listtostr(arglist)))
+      self.log.info("+ Adding cmd {}( {} )".format(name, listtostr(arglist)))
       
       ##Add an argument parser for the function
       parser = argparse.ArgumentParser(description=description, usage=usage)

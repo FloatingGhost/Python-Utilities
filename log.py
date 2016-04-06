@@ -33,8 +33,8 @@ class Log:
     if self.indent < 0:
       self.indent = 0
 
-  def line(self, n=30):
-    self.log.info("="*n)
+  def line(self, ch="=", n=30):
+    self.log.info(ch*n)
 
   def newline(self):
     self.log.info("")
