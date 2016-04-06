@@ -13,7 +13,7 @@ class FourChan:
     self.log.info("Getting /{}/...".format(board))  
     try:
       self.board = chan.Board(board)
-      self.log.info("/{}/ was fetched succesfully".format(board))
+      self.log.info("/{}/ was fetched successfully".format(board))
     except Exception as e:
       self.log.error("Failed to fetch /{}/ -- {}".format(board, e))
 
@@ -27,7 +27,7 @@ class FourChan:
     for x in self.getPosts():
       b = self.board.get_thread(x).posts
       q += [self._scrub(y.comment) for y in b]
-    self.log.info("Got titles of threads succesfully")
+    self.log.info("Got titles of threads successfully")
     return [x for x in q if x != '']
 
   def _scrub(self, post):

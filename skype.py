@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 import Skype4Py as skype
 import re
 import commandprocessor
@@ -62,7 +62,7 @@ class Chat:
     ##Allow for some twiddling
     self.lastMessage = self.chat.Messages[0]
  
-    ##Alert users to the bot's presence
+    ##Alert users to the bot presence
     self.send("Starting {}".format(botname))
     self.log.info("Adding admin commands...")
     ##Initial setup
@@ -84,7 +84,7 @@ class Chat:
       for i in init_triggers:
         self.addTrigger(i, init_triggers[i])
       
-      self.send("Initalisation succesful!")
+      self.send("Initialisation successful!")
 
     self.log.line("+", 40)
     self.log.info("FINISHED SKYPE BOT INIT")
@@ -112,7 +112,7 @@ class Chat:
       self.chat.SendMessage("{}: {}".format(self.msg_prefix, msg))
 
   def processMessage(self):
-    """Figure out what to do with the last recieved message"""
+    """Figure out what to do with the last received message"""
 
     m = self.lastMessage
     n = m.Body.strip()

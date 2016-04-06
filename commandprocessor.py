@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import re
 import argparse
@@ -40,7 +40,7 @@ class CommandProcessor:
     """Add bot configuration commands"""
     self.log.info("Adding common commands...")
     self.log.incIndent()
-    self.addCommand("help", "get help", "help", self.getHelp, ["prgrm"])
+    self.addCommand("help", "get help", "help", self.getHelp, ["program"])
     self.addCommand("quit", "quit", "quit", self.exit,need_admin=True)
     self.addCommand("import", "Import a module", "import [module]",
                     self.loadModule, ["mod"])
@@ -52,7 +52,7 @@ class CommandProcessor:
                     self.isAdmin, ["username"])
     self.addCommand("lsmod", "List currently loaded modules", "lsmod", self.lsmod)
     self.log.decIndent()
-    self.log.info("Sucesfully added common commands.")
+    self.log.info("Successfully added common commands.")
 
   def reloadModule(self, name):
     self.log.info("↻↻  Reloading {} ↻↻".format(name))
@@ -60,7 +60,7 @@ class CommandProcessor:
     self.unloadModule(name)
     self.loadModule(name)
     self.log.decIndent()
-    self.log.info("↻↻ Succesfully reloaded {} ↻↻".format(name))
+    self.log.info("↻↻ Successfully reloaded {} ↻↻".format(name))
     yield "Reloaded {}".format(name)
 
   def lsmod(self):
@@ -85,7 +85,7 @@ class CommandProcessor:
           need_admin: Do we need elevated permissions to run it?
         returns:
           0 on Success
-          1 on Faliure"""
+          1 on Failure """
 
     name = name.lower()
     if name[-1] == "_":
@@ -123,7 +123,7 @@ class CommandProcessor:
       pass
 
   def loadModule(self, name):
-    """Load an external module from modulepath"""
+    """Load an external module from module path"""
     self.log.newline() 
     self.log.info("LOADING MODULE {}".format(name.upper())) 
     self.log.line()
@@ -156,27 +156,32 @@ class CommandProcessor:
             args = k.__code__.co_varnames
             ##Get the number of arguments the function expects
             num = k.__code__.co_argcount
+            defaults = k.__defaults__ or []
+            numdefaults = len(defaults)
             ##Throw the function and arguments over to our addCommand
             l = j.split(".")[-1].lower() 
             funcs = "{}!{}{}, ".format(funcs, l,
                                       "(ADMIN)" if l[0] == "_" else "")
-            self.addCommand(l, func=k, arglist=args[:num])
-            self.log.debug("Sucessfully added function '{}'".format(l))
+            self.addCommand(l, func=k, arglist=args[:num-numdefaults])
+            self.log.debug("Successfully added function '{}'".format(l))
         except Exception as ex:
           ##In case it wasn't actually a function object
           pass
       self.log.decIndent()
       self.log.decIndent()
       self.log.line()
-      self.log.info("LOADED {} SUCCESFULLY".format(name.upper()))
+      self.log.info("LOADED {} SUCCESSFULLY".format(name.upper()))
       self.log.newline()
       yield "Inserted module {} ({})".format(name, funcs[:-2])
       self.modules.append(name)
       yield True
+    except ImportError:
+      self.log.error("!!! Tried to import Non-existent module {}".format(name))
+      yield "Module {} does not exist".format(name)
     except Exception as e:
       self.log.error("!!! Failed with {} !!!".format(e))
       yield False
-
+    
   def unloadModule(self, name):
     """Unload an entire external module"""
     self.log.info("-- Unloading module {} --".format(name))
@@ -190,7 +195,7 @@ class CommandProcessor:
         self.removeCommand(j.split(".")[-1])
       yield True  
       self.modules.remove(name)
-      self.log.info("-- Succesfully unloaded {} --".format(name))
+      self.log.info("-- Successfully unloaded {} --".format(name))
     except Exception as e:
       yield False
 
@@ -199,7 +204,7 @@ class CommandProcessor:
     self.parsers[cmdName].add_argument(varName, help=help, type=var_type)
 
   def processCommand(self, cmd,username=""):
-    """To run when we recieve a command"""
+    """To run when we receive a command"""
     self.log.debug("RECV: {}".format(cmd))
     
     ##Get the command without the prefix (i.e "!")
@@ -207,7 +212,7 @@ class CommandProcessor:
 
     self.log.debug("Resolved to {}".format(cmd))
 
-    ##Seperate the arguments from the command name
+    ##Separate the arguments from the command name
     com,sep,args = cmd.strip().partition(" ")
     
     ##Select the right parser

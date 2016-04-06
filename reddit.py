@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import praw
 from log import Log
@@ -19,7 +19,7 @@ class Reddit:
   def getOPs(self, subname, limit=20):
     """Get the self text of the OPs in a subreddit"""
 
-    self.log.info("Getting the OP selftext in {} (limit {})".format(subname,limit))
+    self.log.info("Getting the OP self text in {} (limit {})".format(subname,limit))
     x = self.getSub(subname, limit)
     return [y.selftext for y in x if y.selftext != '']
 
