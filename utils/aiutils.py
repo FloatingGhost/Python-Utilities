@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+__package__ = "magicutils"
+
 import random
 import math
 from log import Log

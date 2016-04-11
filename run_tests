@@ -1,0 +1,6 @@
+#!/bin/bash
+
+export PYTHONPATH=$PYTHONPATH:utils
+
+cd tests
+python3 run_tests.py

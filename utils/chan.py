@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+__package__ = "magicutils"
 
 import basc_py4chan as chan
 import re

@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-
 import re
 import argparse
 import sys
 import importlib
 import traceback
 from log import Log
+import types
 
 def listtostr(n):
   return ",".join(n)
@@ -124,6 +124,7 @@ class CommandProcessor:
 
   def loadModule(self, name):
     """Load an external module from module path"""
+    print("LOADING {}".format(name))
     self.log.newline() 
     self.log.info("LOADING MODULE {}".format(name.upper())) 
     self.log.line()
@@ -175,8 +176,9 @@ class CommandProcessor:
       yield "Inserted module {} ({})".format(name, funcs[:-2])
       self.modules.append(name)
       yield True
-    except ImportError:
+    except ImportError as ex:
       self.log.error("!!! Tried to import Non-existent module {}".format(name))
+      self.log.error(ex)
       yield "Module {} does not exist".format(name)
     except Exception as e:
       self.log.error("!!! Failed with {} !!!".format(e))
@@ -202,7 +204,6 @@ class CommandProcessor:
   def addArgument(self, cmdName, varName, help="", var_type=str):
     """Add an argument to a function argument processor"""
     self.parsers[cmdName].add_argument(varName, help=help, type=var_type)
-
   def processCommand(self, cmd,username=""):
     """To run when we receive a command"""
     self.log.debug("RECV: {}".format(cmd))
@@ -271,9 +272,12 @@ class CommandProcessor:
         ##In case func doesn't return anything
         yield None
       else:
-        ##Return func()
-        for v in y:
-          yield v
+        if type(y) == types.GeneratorType:
+          ##Return func()
+          for v in y:
+            yield v
+        else:
+          yield y
     except Exception as e:
       self.log.error("Failed, {}".format(e))
       traceback.print_exc()

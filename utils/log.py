@@ -7,6 +7,8 @@
 
 import logging
 from logging.config import fileConfig
+import sys
+import os
 
 class Log:
   """Simple wrapper to logging"""
@@ -14,8 +16,19 @@ class Log:
   INFO  = logging.INFO
  
   def __init__(self, level=logging.INFO):
-    fileConfig("logging.conf")
-    
+    ##Bootstrap config
+    __location__ = os.path.realpath(os.path.join(os.getcwd(),
+                                     os.path.dirname(__file__)))
+    configFile = "../config/logging.conf"
+    configPath = os.path.join(__location__, configFile)
+    try:
+      fileConfig(configPath)
+    except KeyError:
+      print("ERROR IN LOGGING: Could not find {}".format(
+                                                    configPath
+                                                  ))
+      sys.exit(1)
+
     self.log = logging.getLogger()
 
     self.setLevel(level)
@@ -41,17 +54,17 @@ class Log:
   
   def info(self, msg):
     """log a generic info message"""
-    self.log.info(self._indent() + msg)
+    self.log.info(self._indent() + str(msg))
 
   def warning(self, msg):
     """log a warning - usually error-prone stuff"""
-    self.log.warning(self._indent() + msg)
+    self.log.warning(self._indent() + str(msg))
 
   def debug(self, msg):
     """debug logging - usually not logged unless level is high"""
-    self.log.debug(self._indent() + msg)
+    self.log.debug(self._indent() + str(msg))
  
   def error(self, msg):
-    self.log.error(self._indent() + msg) 
+    self.log.error(self._indent() + str(msg)) 
   def setLevel(self, val):
     self.log.setLevel(val)
