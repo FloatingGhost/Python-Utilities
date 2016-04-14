@@ -22,6 +22,8 @@ Like Machine learning stuff, or whatever else.
   * class Twitter - Provides a simple way to retrieve tweets
 * log - A wrapper to logging
   * class Log - Basic setup and usage of logging
+* Package games
+  * GUI - A wrapper to curses
 
 ##Tests
 
