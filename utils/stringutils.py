@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+__author__ = 'Hannah Ward'
+__package__ = 'floatingutils'
+
 import string as st 
 def stringToInt(string):
   l = st.printable

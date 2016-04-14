@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+__author__ = 'Hannah Ward'
+__package__ = 'floatingutils'
+
 import re
 import argparse
 import sys
@@ -56,9 +59,14 @@ class CommandProcessor:
 
   def reloadModule(self, name):
     self.log.info("↻↻  Reloading {} ↻↻".format(name))
+    yield "Reloading {}".format(name)
     self.log.incIndent()
-    self.unloadModule(name)
-    self.loadModule(name)
+    x = self.unloadModule(name)
+    for i in x:
+      yield i
+    x = self.loadModule(name)
+    for i in x:
+      yield i
     self.log.decIndent()
     self.log.info("↻↻ Successfully reloaded {} ↻↻".format(name))
     yield "Reloaded {}".format(name)

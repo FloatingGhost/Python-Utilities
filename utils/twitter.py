@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+__author__ = 'Hannah Ward'
+__package__ = 'floatingutils'
+
 
 import tweepy
 import re

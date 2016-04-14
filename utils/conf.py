@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+__author__ = 'Hannah Ward'
+__package__ = 'floatingutils'
+
 
 #-------------------#
 #conf.py            #
