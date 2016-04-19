@@ -78,6 +78,7 @@ class CommandProcessor:
 
   def exit(self):
     """Shut the bot down"""
+    
     yield ("Going to sleep.")
     sys.exit(1)
 
@@ -273,7 +274,7 @@ class CommandProcessor:
         if username.lower() not in [x.lower() for x in self.admins]:
           self.log.warning("  User is not admin, failing")
           yield "Permission denied - User {} not admin".format(username)
-      
+          return
       ##Unpack the args and run the function
       y = func(*x)
       self.log.debug("Running {} with arguments ({})".format(com, x))

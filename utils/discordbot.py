@@ -10,6 +10,7 @@ from log import Log
 from conf import YamlConf
 import json
 from commandprocessor import CommandProcessor 
+import re
 log = Log()
 
 
@@ -106,21 +107,24 @@ class Discord:
   class Trigger:
     def __init__(self, trigger, text, bot_prefix, substring_match=False):
       self.text = text
-      self.trigger = trigger.strip().lower()
+      self.trigger = trigger
       self.sub = substring_match
       self.msg_prefix = bot_prefix
 
     def match(self, i):
-      i = i.strip().lower()
-      if self.msg_prefix in i:
+      try:
+        i = i.strip()
+        if self.msg_prefix in i:
+          return False
+        if len(self.trigger.split(" ")) > 1:
+          return self.trigger in i
+        log.info("{}, {}".format(i, self.trigger))
+        reg = re.compile(self.trigger)
+        if reg.match(i):
+          return True
         return False
-      if len(self.trigger.split(" ")) > 1:
-        return self.trigger in i
-
-      if self.sub:
-        return (self.trigger in i)
-      else:
-        return (self.trigger in i.strip().lower().split(" "))
+      except:
+        return False
 
     def me(self):
       return "{} -> {}".format(self.trigger, self.text)
