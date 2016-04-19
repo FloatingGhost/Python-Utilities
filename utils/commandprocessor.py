@@ -269,7 +269,8 @@ class CommandProcessor:
     try:
       ##Make sure that if we need admin, the user has it
       if adm:
-        if username not in self.admins:
+        self.log.info("Admings: {}. Is {}?".format(self.admins, username))
+        if username.lower() not in [x.lower() for x in self.admins]:
           self.log.warning("  User is not admin, failing")
           yield "Permission denied - User {} not admin".format(username)
       

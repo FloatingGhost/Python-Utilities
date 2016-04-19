@@ -52,6 +52,8 @@ class NGram:
     corpus = [x for x in corpus.split(" ") if x != '']
     for i in range(len(corpus)-1):
       nlen.append(corpus[i:i+self.n])
+    if len(nlen) > 15000:
+      nlen = nlen[:15000]
 
     self.log.info("Processing {} {}-length strings".format(len(nlen), self.n))
     self.model = []   
