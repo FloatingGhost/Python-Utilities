@@ -172,7 +172,7 @@ class CommandProcessor:
             l = j.split(".")[-1].lower() 
             funcs = "{}!{}{}, ".format(funcs, l,
                                       "(ADMIN)" if l[0] == "_" else "")
-            self.addCommand(l, func=k, arglist=args[:num-numdefaults])
+            self.addCommand(l, usage="{} {}".format(l, ", ".join(["["+x+"]" for x in args[:num-numdefaults]])), func=k, arglist=args[:num-numdefaults])
             self.log.debug("Successfully added function '{}'".format(l))
         except Exception as ex:
           ##In case it wasn't actually a function object

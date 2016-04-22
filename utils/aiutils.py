@@ -52,9 +52,9 @@ class NGram:
     corpus = [x for x in corpus.split(" ") if x != '']
     for i in range(len(corpus)-1):
       nlen.append(corpus[i:i+self.n])
-    if len(nlen) > 15000:
-      nlen = nlen[:15000]
-
+    if len(nlen) > 6000:
+      nlen = nlen[:6000]
+    qqq = len(nlen)
     self.log.info("Processing {} {}-length strings".format(len(nlen), self.n))
     self.model = []   
     endWords = []
@@ -69,7 +69,13 @@ class NGram:
     
     self.log.info("Calculating probabilities...")
     #calculate probs
+    percentages = range(10, 101, 10)
     for w in givenWords:
+      p = givenWords.index(w) / qqq
+      p = 100*p
+      if p > percentages[0]:
+        self.log.info("{}% done...".format(p))
+        percentages = percentages[1:]
       occurances = [x for x in nlen if x[:-1] == w]
       for x in occurances:
         y = x[-1] ##endword
@@ -87,13 +93,14 @@ class NGram:
   def generate(self):
     """Generate a possible message from the model"""
     self.log.info("Generating a possible string...")
-
-    m = "<s>"
-    while m.split(" ")[-1] != "<end>":
-      m += " " + random.choice(self.getAllFromGiven(m.split(" ")[-self.n+1:])) 
-    self.log.info("Generated!")
-    return m.replace("<s>","").replace("<end>","")
-     
+    try:
+      m = "<s>"
+      while m.split(" ")[-1] != "<end>":
+        m += " " + random.choice(self.getAllFromGiven(m.split(" ")[-self.n+1:])) 
+      self.log.info("Generated!")
+      return m.replace("<s>","").replace("<end>","")
+    except IndexError:
+      return "Could not generate... not enough data!"
   def getAllFromGiven(self, given):
     """Get all instances of x, where (given, x) is a member of the model"""
     j = []
