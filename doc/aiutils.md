@@ -5,7 +5,7 @@
 ###NGram
 
 The N-Gram model is a way of modelling a training corpus (text) into a set of
-probabilities, `P(W<sub>0</sub> | W<sub>-1</sub>, W<sub>-2</sub>...W<sub>-N</sub>)`.
+probabilities, P(W<sub>0</sub> | W<sub>-1</sub>, W<sub>-2</sub>...W<sub>-N</sub>).
 
 So, for example, N=2 on "Cats sit, and cats run" would generate:
 ```
