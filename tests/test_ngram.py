@@ -1,4 +1,4 @@
-from aiutils import NGram
+from floatingutils.aiutils import NGram
 
 corpus = "the cat sat on the mat, the cat ran"
 

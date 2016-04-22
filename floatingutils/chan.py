@@ -4,7 +4,7 @@ __package__ = "magicutils"
 
 import basc_py4chan as chan
 import re
-from log import Log
+from floatingutils.log import Log
 import pickle
 
 class FourChan:

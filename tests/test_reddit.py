@@ -1,4 +1,4 @@
-from reddit import Reddit
+from floatingutils.reddit import Reddit
 
 r = Reddit()
 

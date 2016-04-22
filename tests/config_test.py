@@ -1,6 +1,6 @@
 import nose
 
-from conf import Conf
+from floatingutils.conf import Conf
 
 c = Conf("test_configs/basic_config.conf")
 

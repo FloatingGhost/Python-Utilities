@@ -5,7 +5,7 @@ __package__ = 'floatingutils'
 
 import tweepy
 import re
-from conf import Conf
+from floatingutils.conf import Conf
 
 class Twitter:
   def __init__(self):

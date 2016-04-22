@@ -6,10 +6,10 @@ import os
 import discord
 import asyncio
 import requests
-from log import Log
-from conf import YamlConf
+from floatingutils.log import Log
+from floatingutils.conf import YamlConf
+from floatingutils.commandprocessor import CommandProcessor 
 import json
-from commandprocessor import CommandProcessor 
 import re
 import pyaml
 import sys

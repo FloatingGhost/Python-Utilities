@@ -4,7 +4,7 @@ __package__ = 'floatingutils'
 
 
 import praw
-from log import Log
+from floatingutils.log import Log
 
 class Reddit:
   def __init__(self, useragent="FloatingGhost's python utility"):

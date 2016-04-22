@@ -7,7 +7,7 @@ import argparse
 import sys
 import importlib
 import traceback
-from log import Log
+from floatingutils.log import Log
 import types
 
 def listtostr(n):

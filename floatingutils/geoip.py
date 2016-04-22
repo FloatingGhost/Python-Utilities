@@ -3,7 +3,7 @@ __author__ = 'Hannah Ward'
 __package__ = 'floatingutils'
 
 
-from log import Log
+from floatingutils.log import Log
 import json
 from pygeoip import GeoIP
 from conf import YamlConf

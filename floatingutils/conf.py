@@ -11,7 +11,7 @@ __package__ = 'floatingutils'
 #-------------------#
 
 import yaml
-from log import Log
+from floatingutils.log import Log
 
 
 class Conf:

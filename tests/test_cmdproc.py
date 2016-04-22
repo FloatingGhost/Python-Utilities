@@ -1,4 +1,4 @@
-from commandprocessor import CommandProcessor as cmd
+from floatingutils.commandprocessor import CommandProcessor as cmd
 from nose.tools import nottest
 
 proc = cmd(debug=True)

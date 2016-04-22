@@ -4,7 +4,7 @@ __package__ = "magicutils"
 
 import random
 import math
-from log import Log
+from floatingutils.log import Log
 
 def listtostr_(n):
   """Turn [1,2,3] to "1 2 3"""

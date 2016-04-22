@@ -4,10 +4,10 @@ __package__ = 'floatingutils'
 
 import Skype4Py as skype
 import re
-import commandprocessor
+import floatingutils.commandprocessor
 import sys
 import threading
-from log import Log
+from floatingutils.log import Log
 import traceback
 class Chat:
   """Represents a chat class in a skype client"""
