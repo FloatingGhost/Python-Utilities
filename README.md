@@ -4,6 +4,12 @@ Hannah's personal python utils repo - for anything I use a lot.
 
 Like Machine learning stuff, or whatever else.
 
+##Installation
+
+```bash
+$ sudo python setup.py install
+```
+
 ##Utils:
 * aiutils - Machine learning classes
   * class NGram, for models of language
@@ -25,9 +31,11 @@ Like Machine learning stuff, or whatever else.
 * Package games
   * GUI - A wrapper to curses
 
+Individual usages are listed in doc
+
 ##Tests
 
-Run ./tests.py - calls unittest
+Run ./tests.py - calls nose
 
 ###Licence
 
