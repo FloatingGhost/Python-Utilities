@@ -1,0 +1,53 @@
+var spr_ai = {
+
+spr:null,
+  phases:[
+  function() {
+  this.alive = true; 
+  console.log('Beginning Wiggle_Phase');
+  game.add.tween(spr).to({x:spr.x+10, y:spr.y+20}, 3000).start();
+  
+  game.time.events.add(Phaser.Timer.SECOND * 200,   function() {
+
+;
+  game.add.tween(spr).to({x:spr.x+-10, y:spr.y+-20}, 3000).start();
+  
+  game.time.events.add(Phaser.Timer.SECOND * 200,   function() {
+
+;
+  this.alive=false;
+,
+  function() {
+  this.alive = true; 
+  console.log('Beginning Attack_Phase');
+  game.add.tween(spr).to({x:spr.x+10, y:spr.y+20}, 3000).start();
+  
+  game.time.events.add(Phaser.Timer.SECOND * 5000,   function() {
+
+;
+  game.add.tween(spr).to({x:spr.x+-10, y:spr.y+-20}, 3000).start();
+  
+  game.time.events.add(Phaser.Timer.SECOND * 500,   function() {
+
+;
+  this.alive=false;
+,
+
+],
+alive: false,
+ setup_spr_ai: function(object) {
+  console.log("Setting spr to:")
+  console.log(object);
+  spr = object;
+},
+
+update:function(){
+  if (!this.alive) {
+  console.log("Updating AI..."); 
+  var index = Math.floor(Math.random() * this.phases.length);
+  console.log("Chose " + index)
+  var func = this.phases[index]
+  
+  func();  
+}},
+}
