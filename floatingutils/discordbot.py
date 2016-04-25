@@ -41,7 +41,7 @@ class Discord:
 
     if init_triggers:      
       for i in init_triggers:
-        self.triggers.append(self.Trigger(i, init_triggers[i], self.bot_prefix))
+        self.addTrigger(i, init_triggers[i])
     
     atexit.register(self.saveandquit, True)
     if init_modules:
@@ -61,9 +61,16 @@ class Discord:
     log.info("Adding admin commands...")
     self.cmd.addCommand("trig", func=self.addTrigger, arglist=["trig", "trigger"])
     self.cmd.addCommand("rmtrig", func=self.rmtrig, arglist=["trig"])
+    self.cmd.addCommand("lstrigs", func=self.lstrig)
     self.cmd.addCommand("lsadmin", func=self.lsadmin)
     self.cmd.addCommand("setprefix", func=self.setprefix, arglist=["pref"])
-    self.cmd.addCommand("saq", func=self.saveandquit, arglist=["restart"], need_admin=True)
+    self.cmd.addCommand("saq", func=self.saveandquit, need_admin=True)
+
+  def lstrig(self):
+    x = "Triggers: \n"
+    for i in self.triggers:
+      x += i.me() + "\n"
+    return x
 
   def saveandquit(self, restart):
     log.info("Restarting...")
@@ -114,6 +121,9 @@ class Discord:
         self.triggers.remove(i)
     return "Removed."
   def addTrigger(self, trig, trigger):
+    for i in self.triggers:
+      if i.match(trig):
+        return "We already have one like that, {}".format(i.me())
     self.triggers.append(self.Trigger(trig, trigger, self.bot_prefix))
     return "ADDED!"
    
@@ -130,7 +140,7 @@ class Discord:
         for i in self.triggers:
           if i.match(cmd.content):
             await self.send(str(i), cmd.channel)
-  
+            break 
   async def send(self, msg, channel=None):
     #Strip all bare lines
     if msg not in [None, True, False]:

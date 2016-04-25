@@ -9,4 +9,5 @@ setup(name='FloatingUtils' ,
       author_email='hannah.ward9001@gmail.com',
       url='',
       packages=['floatingutils'],
-      data_files=[("./config", ['./floatingutils/config/geoip.conf', './floatingutils/config/logging.conf'])], 
+      data_files=[("./config", ['./floatingutils/config/geoip.conf', './floatingutils/config/logging.conf'])],
+    ) 
