@@ -1,4 +1,4 @@
-from conf import YamlConf
+from floatingutils.conf import YamlConf
 
 ##setup
 c = YamlConf("test_configs/yaml_config.conf")

@@ -6,11 +6,12 @@ __package__ = 'floatingutils'
 from floatingutils.log import Log
 import json
 from pygeoip import GeoIP
-from conf import YamlConf
+from floatingutils.conf import YamlConf
 from requests import get
+import os
 
 log = Log()
-config = YamlConf("../config/geoip.conf")
+config = YamlConf(os.path.join(os.path.dirname(os.path.abspath(__file__)),"config/geoip.conf"))
 
 
 class Geo(GeoIP):

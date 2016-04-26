@@ -6,23 +6,6 @@ alive:false,
   function() {
 if (this.alive) return;
   this.alive = true; 
-  console.log('Beginning Wiggle_Phase');
-  game.add.tween(spr).to({x:spr.x+10, y:spr.y+20}, 3000).start();
-  
-  game.time.events.add(Phaser.Timer.SECOND * 3,   function() {
-
-;
-  game.add.tween(spr).to({x:spr.x+-10, y:spr.y+-20}, 3000).start();
-  
-  game.time.events.add(Phaser.Timer.SECOND * 3,   function() {
-
-;
-
-this.alive=false;
-}, this)}, this)},
-  function() {
-if (this.alive) return;
-  this.alive = true; 
   console.log('Beginning Attack_Phase');
   game.add.tween(spr).to({x:spr.x+100, y:spr.y+200}, 3000).start();
   
@@ -34,9 +17,24 @@ if (this.alive) return;
   game.time.events.add(Phaser.Timer.SECOND * 3,   function() {
 
 ;
+    spr.rotation = -1;
+  
+  game.time.events.add(Phaser.Timer.SECOND * 3,   function() {
+
+;
+    spr.rotation = 0;
+  
+  game.time.events.add(Phaser.Timer.SECOND * 3,   function() {
+
+;
+  game.add.tween(spr).to({x:spr.x+-100, y:spr.y+100}, 3000).start();
+  
+  game.time.events.add(Phaser.Timer.SECOND * 3,   function() {
+
+;
 
 this.alive=false;
-}, this)}, this)},
+}, this)}, this)}, this)}, this)}, this)},
 
 ],
  setup_spr_ai: function(object) {

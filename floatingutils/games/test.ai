@@ -4,10 +4,9 @@ move 100 200 3000
 wait 3
 move -100 -200 3000
 wait 3
-
-[Wiggle_Phase]
-
-move 10 20 3000
+set rotation -1
 wait 3
-move -10 -20 3000
-wait 3 
+set rotation 0
+wait 3
+move -100 100 3000
+wait 3

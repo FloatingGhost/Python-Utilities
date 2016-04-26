@@ -4,7 +4,7 @@ __package__ = 'floatingutils'
 
 import Skype4Py as skype
 import re
-import floatingutils.commandprocessor
+import floatingutils.commandprocessor as commandprocessor
 import sys
 import threading
 from floatingutils.log import Log

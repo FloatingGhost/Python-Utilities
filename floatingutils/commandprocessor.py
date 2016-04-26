@@ -83,7 +83,7 @@ class CommandProcessor:
     sys.exit(1)
 
   def addCommand(self, name, description="", usage="", func=None, arglist=[], 
-                 need_admin=False):
+                 need_admin=False,module="Builtin"):
     """Add a command to our list
        arguments: 
           name: The name to call the function by, i.e !hello
@@ -98,35 +98,28 @@ class CommandProcessor:
 
     name = name.lower()
     if name[-1] == "_":
+      self.log.warning("Not adding {}: Hidden function".format(name))
       return 0
     #If the user doesn't provide a function, we can't do anything
     if not func:
       self.log.warning("No function provided for {}.".format(name))
       return 1
 
-    #Check we haven't got the function already
-    if not name in self.parsers:
-      self.log.info("+ Adding cmd {}( {} )".format(name, listtostr(arglist)))
-      
-      ##Add an argument parser for the function
-      parser = argparse.ArgumentParser(description=description, usage=usage)
-      ##Add the parser to our list
-      self.parsers[name] = parser
-      
-      ##Add the arguments we want for this function
-      for i in arglist:
-        self.addArgument(name, i)
-     
-      ##Finally, add the function to our list
-      self.addFunc(name, func, arglist, need_admin or name[0] == "_")
-      return 1
-    else:
-      return 0
+    self.log.info("+ Adding cmd {}( {} )".format(name, ",".join(arglist)))
+    ##Add an argument parser for the function
+    parser = argparse.ArgumentParser(description=description, usage=usage)
+    ##Add the parser to our list
+    self.parsers[name] = parser
+    
+    self.functions[name] = self.Command(name,parser,func,arglist,module,need_admin)
+    ##Add the arguments we want for this function
+    for i in arglist:
+      self.addArgument(name, i)
+    return 1
 
   def removeCommand(self, name):
     """Remove a command from the list"""
     try:
-      del self.parsers[name]
       del self.functions[name]
     except:
       pass
@@ -212,7 +205,8 @@ class CommandProcessor:
 
   def addArgument(self, cmdName, varName, help="", var_type=str):
     """Add an argument to a function argument processor"""
-    self.parsers[cmdName].add_argument(varName, help=help, type=var_type)
+    self.functions[cmdName].parser.add_argument(varName, help=help, type=var_type)
+  
   def processCommand(self, cmd,username=""):
     """To run when we receive a command"""
     self.log.debug("RECV: {}".format(cmd))
@@ -225,9 +219,9 @@ class CommandProcessor:
     ##Separate the arguments from the command name
     com,sep,args = cmd.strip().partition(" ")
     
-    ##Select the right parser
+    ##Select the right object
     try:
-      parser = self.parsers[com]
+      funcObject = self.functions[com]
     except KeyError:
       ##We don't know of the command
       self.log.info("Key {} not found".format(com))
@@ -235,7 +229,7 @@ class CommandProcessor:
 
     try:
       ##Try to get the arguments from the string
-      args = parser.parse_args([x for x in args.split(self.delimiter) if x!=''])
+      args = funcObject.parse([x for x in args.split(self.delimiter) if x!=''])
 
       ##Run the command
       running = self.run(com,args,username)
@@ -243,7 +237,9 @@ class CommandProcessor:
         yield value
     except Exception as e:
       ##for if we failed to parse 
+      yield "Error: {}".format(e)
       yield self.getHelp(cmd)
+      
     except SystemExit:
       if com == "quit":
         sys.exit()
@@ -259,24 +255,23 @@ class CommandProcessor:
     """Run a command"""
 
     ##Get the function, arguments and if admin is needed
-    func,args,adm = self.functions[com]
+    funcObj = self.functions[com]
     x = []
     
     ##Organise the arguments into the order the function expects
-    for i in args:
+    for i in funcObj.args:
       x.append(arglist[i])
 
     self.log.debug("Running {}({})".format(com, arglist))
     try:
       ##Make sure that if we need admin, the user has it
-      if adm:
-        self.log.info("Admings: {}. Is {}?".format(self.admins, username))
+      if funcObj.admin:
         if username.lower() not in [x.lower() for x in self.admins]:
           self.log.warning("  User is not admin, failing")
           yield "Permission denied - User {} not admin".format(username)
           return
       ##Unpack the args and run the function
-      y = func(*x)
+      y = funcObj.function(*x)
       self.log.debug("Running {} with arguments ({})".format(com, x))
       if y == None:
         ##In case func doesn't return anything
@@ -292,13 +287,6 @@ class CommandProcessor:
       self.log.error("Failed, {}".format(e))
       traceback.print_exc()
       yield self.getHelp(com)
-
-  def addFunc(self, funcname, func, argslist, need_admin):
-    """Add a function to the command processor"""
-    self.log.debug("Adding function: {} /({})".format(funcname, argslist))
-
-    ##Associate the function name with the function
-    self.functions[funcname] = [func, argslist, need_admin]
 
   def getHelp(self, name):
     if name == "all":
@@ -318,3 +306,18 @@ class CommandProcessor:
 
   def isAdmin(self, username):
     yield "{} is{} an admin.".format(username, " not" if (not username.lower() in self.admins) else "")
+
+  class Command:
+    def __init__(self, name, parser, function, args=[], module="Builtin",admin=False):
+      self.name = name
+      self.parser = parser
+      self.function = function
+      self.module = module
+      self.args = args
+      self.admin = admin
+
+    def parse(self, args):
+      return self.parser.parse_args(args)
+
+    def __repr__(self):
+      return "{0.module}.{0.name}({1})".format(self, ", ".join(self.args))

@@ -22,7 +22,7 @@ class Log:
     ##Bootstrap config
     __location__ = os.path.realpath(os.path.join(os.getcwd(),
                                      os.path.dirname(__file__)))
-    configFile = "../config/logging.conf"
+    configFile = "config/logging.conf"
     configPath = os.path.join(__location__, configFile)
     try:
       fileConfig(configPath)
