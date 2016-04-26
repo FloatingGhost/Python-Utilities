@@ -175,7 +175,6 @@ class Discord:
         i = i.strip()
         if self.msg_prefix in i:
           return False
-        log.info("{}, {}".format(i, self.trigger))
         reg = re.compile(".*"+self.trigger+".*")
         if reg.match(i):
           return True
