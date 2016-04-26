@@ -225,7 +225,7 @@ class CommandProcessor:
     except KeyError:
       ##We don't know of the command
       self.log.info("Key {} not found".format(com))
-      yield "Command not found"
+      return "Command not found"
 
     try:
       ##Try to get the arguments from the string
