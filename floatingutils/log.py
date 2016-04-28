@@ -39,7 +39,7 @@ class Log:
     self.indent = 0
 
   def _indent(self):
-    return " "*self.indent
+    return ""
 
   def incIndent(self):
     self.indent+=1

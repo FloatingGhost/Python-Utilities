@@ -60,7 +60,11 @@ def test_run_command():
   assert(3 == c.getOutput())
   assert(5 == c.getOutput())
   assert("hello" == c.getOutput())
-
 def test_load():
   c.loadModule("import_test")
-c.exit()
+  c.push("!lsmod")
+  log.info(c.getOutput())
+  c.push("!help imported_func")
+  log.info(c.getOutput())
+def test_quit():
+  c.push("!quit")

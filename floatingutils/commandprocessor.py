@@ -44,6 +44,7 @@ class CommandProcessor(threading.Thread):
     self.admins = admins
     self._addUtilityCommands()
     self.loadedModules = ["Builtin"]
+    self.triggers = []
     self.log.line()
     self.log.info("FINISHED CMDPROC INIT")   
     self.log.newline()
@@ -72,6 +73,23 @@ class CommandProcessor(threading.Thread):
       self.log.info("Succesfully removed {}".format(function_name))
     else:
       self.log.info("Could not remove non-existent function {}".format(function_name))
+  
+  def addTrigger(self, txt, rpl):
+    for trigger in self.triggers:
+      if trigger.trigger == txt:
+        trigger.send_text = rpl
+        return ("Modified trigger to {}".format(trigger))
+        
+    self.triggers.append(Trigger(txt, rpl))
+    self.log.info("Added {}".format(self.triggers[-1]))
+    return ("Added!")
+
+  def removeTrigger(self, txt):
+    for trigger in self.triggers:
+      if trigger.trigger == txt:
+        self.triggers.remove(trigger)
+        return ("Removed {}".format(trigger))
+
   def setCallback(self, function):
     """Set the function to run on function complete
        ARGS: function (python function)"""
@@ -113,6 +131,7 @@ class CommandProcessor(threading.Thread):
       self.log.info("No command of name {} detected".format(command_name))
 
   def output(self, val):
+    self.log.info("Outputting {}".format(val))
     self.outputQ.put(val)
     if self.callback:
       self.callback(val)
@@ -145,7 +164,7 @@ class CommandProcessor(threading.Thread):
   def push(self, commandstring):
     """Add a command to the command queue - to be processed commands
        ARGS: commandstring (str) - the command to process"""
-    self.log.debug("Pushing command {}".format(commandstring))
+    self.log.info("Pushing command {}".format(commandstring))
     self.cmdQ.put(commandstring)
     self.log.debug("Approx size: {}".format(self.cmdQ.qsize()))
   
@@ -180,7 +199,8 @@ class CommandProcessor(threading.Thread):
       funcs = ""
       ##Load the functions in
       for j in z:
-        self.addCommand(j.split(".")[1], eval(j), module=name)
+        if type(eval(j)) == types.FunctionType:
+          self.addCommand(j.split(".")[1], eval(j), module=name)
       self.loadedModules.append(name)
     except ImportError as ie:
       self.log.error("Could not find module {}".format(name))
@@ -192,12 +212,28 @@ class CommandProcessor(threading.Thread):
     for i in self.commands:
       if self.commands[i].module == module_name:
         self.removeCommand(i)
+    self.loadedModules.remove(module_name)
     self.log.info("Unloaded {}".format(module_name))
 
+  def lsmod(self):
+    """List all currently loaded modules"""
+    x = "Loaded modules: \n"
+    x += "\n".join(self.loadedModules)
+    self.output( x + "\n" )
+  
+  def getHelp(self, cmd=None):
+    if cmd:
+      if cmd in self.commands:
+        self.output(self.commands[cmd].getHelp())
+      else:
+        self.output("Command does not exist")
+
   def _addUtilityCommands(self):
-    pass
-
-
+    self.addCommand("lsmod", self.lsmod)
+    self.addCommand("import", self.loadModule)
+    self.addCommand("quit", self.exit)
+    self.addCommand("help", self.getHelp)
+  
 class Command:
   def __init__(self, f_name, f_obj, help, module = "Builtin"):
     self.log = Log()
@@ -206,7 +242,7 @@ class Command:
     self.log.line("-")
     self.name = f_name
     self.func = f_obj
-    self.help = help
+    self.help = self.func.__doc__ or ""
     self.module = module
     self.admin_required = "admin" in self.func.__code__.co_varnames
     self.nargs = self.func.__code__.co_argcount
@@ -220,7 +256,9 @@ class Command:
     self.optargs = self.func.__code__.co_varnames[self.nargs-self.noptargs:
                                                   self.noptargs+1]
     self.hints = typing.get_type_hints(self.func) 
-
+    if "self" in self.args:
+      self.nargs -= 1
+    self.args = tuple([x for x in self.args if x != "self"])
     for i in range(self.noptargs):
       self.argdefault[self.optargs[i]] = self.defaults[i]
 
@@ -237,6 +275,16 @@ class Command:
     self.success = True
     self.log.line("-")
     self.log.info(self)
+
+  def getHelp(self):
+    h =  self.help 
+    if self.nargs > 0:
+      h += "\nARGS: " + ", ".join(self.args) + "\n" 
+    if self.noptargs > 0:
+      h +=  "\nOPTARGS: " + " , ".join(self.optargs)
+    if "\n" not in h:
+      h += " (No Arguments)"
+    return h 
 
   def run(self, args, user_is_admin=False):
     if self.admin_required and not user_is_admin:
@@ -284,8 +332,20 @@ class Command:
     x = "\n\nCOMMAND DEFINITION ::- \n"
     return x+"\nCommand (\n Name: {}.{},\n Args: {},\n OptArgs: {}\n Admin: {}\n)\n".format(
             self.module, self.name, self.args, self.optargs, self.admin_required)
+
+
 class Trigger:
-  pass
+  def __init__(self, trigger, send_text):
+    self.trigger = trigger
+    self.send_text = send_text
+
+  def match(self, txt):
+    regex = re.compile(".* {} .*".format(self.trigger))
+    if regex.match(txt):
+      return True
+  
+  def __repr__(self):
+    return "{} -> {}".format(trigger, send_text)
 
 class ArgumentFormatError(Exception):
   pass

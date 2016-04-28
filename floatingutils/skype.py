@@ -69,10 +69,7 @@ class Chat:
     self.send("Starting {}".format(botname))
     self.log.info("Adding admin commands...")
     ##Initial setup
-    self.addCommand("setprefix", "Set the bot's prefix", "setprefix [prefix]",
-                    self.setPrefix, ["prefix"])
-    self.addCommand("list", "list triggers", "list", self.listTriggers)
-    self.addCommand("trig", "Add a trigger", "trig x y", self.addTrigger, ["t", "tr"])
+    self.addCommand("setprefix", self.setPrefix)
 
     ##Load any default modules
     if init_modules:
@@ -84,10 +81,7 @@ class Chat:
     
     if init_triggers:
       self.log.info("Adding initial triggers...")
-      for i in init_triggers:
-        self.addTrigger(i, init_triggers[i])
-      
-      self.send("Initialisation successful!")
+    self.send("Initialisation successful!")
 
     self.log.line("+", 40)
     self.log.info("FINISHED SKYPE BOT INIT")
@@ -98,17 +92,6 @@ class Chat:
     self.msg_prefix = pre
     self.send("Set!")
 
-  def getHelp(self, cmd):
-    """Get the help text for cmd"""
-
-    if cmd == "":
-      helpText = "Currently installed commands: "
-      for i in (self.cmdProc.getAllHelp()):
-        helpText += "\n{}".format(i)
-      self.send(helpText)
-    else:
-      self.send(self.cmdProc.getHelp(cmd))
-  
   def send(self, msg):
     """Send a message to the chat"""
     if msg != None and msg != "" and type(msg) != type(True):
@@ -116,51 +99,15 @@ class Chat:
 
   def processMessage(self):
     """Figure out what to do with the last received message"""
-
-    m = self.lastMessage
-    n = m.Body.strip()
-    if n[0] == self.cmd:
-      #If the message starts with our command prefix, process it as a command
-      self.processAsCommand()
-    else:
-      #If not, check it against the text triggers
-      self.processAsText()
+    if self.msg_prefix not in self.lastMessage.Body:
+      self.log.info("Processing {}".format(self.lastMessage.Body))
+      self.cmdProc.push(self.lastMessage.Body)
     
-  def processAsCommand(self):
-    """Figure out what command the user wants to run"""
-
-    x=(self.cmdProc.processCommand(self.lastMessage.Body.strip(),
-                                   username=self.lastMessage.FromHandle))
-    if x:
-      for v in x:
-        self.send(v)
-    else:
-      self.send("Command not found :c")
-
-  def processAsText(self):
-    m = self.lastMessage
-    n = m.Body.strip()
-    for i in self.hooks:
-      if i.match(n):
-        self.send(str(i))
-    if self.processFunction:
-      if "Starting {}".format(self.botname) not in n:
-        qq = (self.processFunction(n))
-        if qq:
-          self.send(qq)
-
-  def addTrigger(self, triggerText, text, substring_match=False):
-    self.log.info("Adding trigger ({}) -> ({})".format(triggerText, text))
-    self.hooks.append(self.Trigger(triggerText, text, self.msg_prefix, substring_match))
-    return "Done!"
-
-  def listTriggers(self):
-    x = "The text triggers I currently have are:\n"
-    for i in self.hooks:
-      x += "{}\n".format(i.me())
-    return (x)
-
   def mainloop(self):
+    self.log.info("Starting mainloop...")
+    self.cmdProc.start()
+    threading.Thread(target=self.getOutput).start()
+    self.log.info("Started thread.")
     while 1:
       try:
         newmsg = self.chat.Messages[0]
@@ -169,34 +116,15 @@ class Chat:
           self.processMessage()
       except KeyboardInterrupt:
         sys.exit()
-  
-  def addCommand(self, cmdName, desc, usage, func, arglist=[],need_admin=False):
-    self.cmdProc.addCommand(cmdName, desc, usage, func, arglist,need_admin=need_admin)
+   
+  def addCommand(self, cmdName, func):
+    self.cmdProc.addCommand(cmdName, func)
 
   def getAllBy(self, handle):
     return [i.Body for i in self.chat.Messages if str(i.FromHandle).lower() == handle]
 
-  class Trigger:
-    def __init__(self, trigger, text, bot_prefix, substring_match=False):
-      self.text = text
-      self.trigger = trigger.strip().lower()
-      self.sub = substring_match
-      self.msg_prefix = bot_prefix
+  def getOutput(self):
+    self.log.info("Starting output thread...")
+    while True:
+      self.send(self.cmdProc.getOutput())
 
-    def match(self, i):
-      i = i.strip().lower()
-      if self.msg_prefix in i:
-        return False
-      if len(self.trigger.split(" ")) > 1:
-        return self.trigger in i
-
-      if self.sub:
-        return (self.trigger in i)
-      else:
-        return (self.trigger in i.strip().lower().split(" "))    
- 
-    def me(self):
-      return "{} -> {}".format(self.trigger, self.text)
- 
-    def __repr__(self):
-      return self.text

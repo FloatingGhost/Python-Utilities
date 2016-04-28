@@ -9,7 +9,7 @@ from floatingutils.conf import Conf
 
 class Twitter:
   def __init__(self):
-    keyconf = Conf("twitter-config.conf")
+    keyconf = Conf("twitter.login")
     consumer_key=keyconf.getValue("consumer_key")
     consumer_secret=keyconf.getValue("consumer_secret")
     access_token=keyconf.getValue("access_token")
