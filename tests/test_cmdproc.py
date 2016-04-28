@@ -1,58 +1,49 @@
-from floatingutils.commandprocessor import CommandProcessor as cmd
+#!/usr/bin/env python3
+
+###Test file for command processor
 from nose.tools import nottest
-
-proc = cmd(debug=True)
-
+from commandprocessor import *
+import atexit
+import time
+from log import Log
+c = CommandProcessor(debug=True)
+log = Log()
+c.start()
+time.sleep(1)
 @nottest
-def no_args():
+def return_1():
   return 1
 
 @nottest
-def one_arg(a):
+def return_arg(a: int):
+  return a
+
+@nottest 
+def return_optarg(a:int=5):
   return a
 
 @nottest
-def two_args(a,b):
-  return a+b
+def return_argPlusOpt(a: int, b:int=5):
+  c = a+b
+  return  c
 
+def test_add_command():
+  c.addCommand("ret1", return_1)
+  c.addCommand("reta", return_arg)
+  c.addCommand("reto", return_optarg)
+  c.addCommand("retadd", return_argPlusOpt)
+def test_run_command():
+  c.push("!ret1")
+  c.push("!reta 5")
+  c.push("!reto")
+  c.push("!reto a")
+  c.push("!retadd 5")
+  c.push("!retadd 1,2")
+  assert(1 == c.getOutput())
+  assert(5 == c.getOutput())
+  assert(5 == c.getOutput())
+  assert("Error" in c.getOutput())
+  assert(10 == c.getOutput())
+  assert(3 == c.getOutput())
 
-def test_addcommand():
-  assert ( proc.addCommand("test_noargs",
-                           "A test command with 0 arguments",
-                           "test_noargs",
-                           no_args
-                           )
-         )
-
-  assert ( proc.addCommand("test_onearg",  
-                           "A test command that returns its arg",
-                           "test_onearg",
-                           one_arg,
-                           ["argument"]
-                          )
-          )
-
-  assert( proc.addCommand("test_twoarg",
-                          "A test that adds its 2 args",
-                          "test_twoarg",
-                          two_args,
-                          ["first", "second"]
-                         )
-        )
-
-def test_runcommand():
-  #No args
-  assert ( 1 == next(proc.processCommand("!test_noargs" )))
-  assert ( "1" == next(proc.processCommand("!test_onearg 1")))
-  assert ("hello world" == next(proc.processCommand(
-                  "!test_twoarg hello, world")))
-  
-def test_loadmodule():
-  next(proc.loadModule("testmods.import_test"))
-  assert ( 1 == next(proc.processCommand("!imported_func")) )
-
-def test_unloadmodule():
-  next(proc.unloadModule("testmods.import_test"))
-  assert ( "Command not found" == next(proc.processCommand(
-                                          "!imported_func")))
-
+c.exit()

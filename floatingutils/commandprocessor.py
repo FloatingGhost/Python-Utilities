@@ -9,315 +9,219 @@ import importlib
 import traceback
 from floatingutils.log import Log
 import types
+import typing
+import threading
+import queue
 
-def listtostr(n):
-  return ",".join(n)
-
-class CommandProcessor:
+class CommandProcessor(threading.Thread):
   """A class to generically process commands, as defined by a list of commands and
      argparse parsers - used to extract arguments from a string"""
 
-  def __init__(self, delimiter=",", prefix="!", modulePath=".", debug=False, admins=[]):
+  def __init__(self, delimiter=",", command_prefix="!", 
+                     module_path=".", admins=[], debug=False):
+    super(CommandProcessor, self).__init__()
     self.log = Log()
-    self.log.info("Command Processor Created, prefix {}".format(prefix))
+    self.log.info("Command Processor Created, prefix {}".format(command_prefix))
     self.log.newline()
     self.log.info("CMDPROC INIT")
     self.log.line()
     self.log.incIndent()
-    self.parsers = {}
-    self.delimiter = delimiter
-    self.functions = {}
-    self.modules = []
-    self.prefix = prefix
-    ##Add the module path to PYTHONPATH
-    sys.path.insert(0, modulePath)
-    self.admins = admins
     if debug:
       self.log.setLevel(self.log.DEBUG)
-    self._addConfigCommands()
+    self.callback = print
+    self.log.info("Initilising command queue...")
+    self.cmdQ = queue.Queue()
+    self.log.info("Initilising output queue...")
+    self.outputQ = queue.Queue()
+    self.commands = {}
+    self.log.info("Initilising requests...")
+    self.stopReq = threading.Event()
+    self.stopNOW = threading.Event()
+    self.log.info("Setting config...")
+    self.command_prefix = command_prefix
+    self.module_path = module_path
+    self.admins = admins
     self.log.line()
     self.log.info("FINISHED CMDPROC INIT")   
     self.log.newline()
 
-  def _addConfigCommands(self):
-    """Add bot configuration commands"""
-    self.log.info("Adding common commands...")
-    self.log.incIndent()
-    self.addCommand("help", "get help", "help", self.getHelp, ["program"])
-    self.addCommand("quit", "quit", "quit", self.exit,need_admin=True)
-    self.addCommand("import", "Import a module", "import [module]",
-                    self.loadModule, ["mod"])
-    self.addCommand("unload", "Unload a module", "unload [module]",
-                    self.unloadModule, ["mod"])
-    self.addCommand("reload", "Reload a module", "reload [module]", self.reloadModule,
-                    ["mod"])
-    self.addCommand("isadmin", "Check if a user is an admin", "isadmin [username]",
-                    self.isAdmin, ["username"])
-    self.addCommand("lsmod", "List currently loaded modules", "lsmod", self.lsmod)
-    self.log.decIndent()
-    self.log.info("Successfully added common commands.")
-
-  def reloadModule(self, name):
-    self.log.info("↻↻  Reloading {} ↻↻".format(name))
-    yield "Reloading {}".format(name)
-    self.log.incIndent()
-    x = self.unloadModule(name)
-    for i in x:
-      yield i
-    x = self.loadModule(name)
-    for i in x:
-      yield i
-    self.log.decIndent()
-    self.log.info("↻↻ Successfully reloaded {} ↻↻".format(name))
-    yield "Reloaded {}".format(name)
-
-  def lsmod(self):
-    x = "Currently loaded modules:\n"
-    y = "\n".join(self.modules)
-    yield x+y
-
-  def exit(self):
-    """Shut the bot down"""
-    
-    yield ("Going to sleep.")
-    sys.exit(1)
-
-  def addCommand(self, name, description="", usage="", func=None, arglist=[], 
-                 need_admin=False,module="Builtin"):
-    """Add a command to our list
-       arguments: 
-          name: The name to call the function by, i.e !hello
-          description: An extended description of what it does
-          usage: A description of how to use the function
-          func: A function object to call when we run it
-          arglist: A list of argument names
-          need_admin: Do we need elevated permissions to run it?
-        returns:
-          0 on Success
-          1 on Failure """
-
-    name = name.lower()
-    if name[-1] == "_":
-      self.log.warning("Not adding {}: Hidden function".format(name))
-      return 0
-    #If the user doesn't provide a function, we can't do anything
-    if not func:
-      self.log.warning("No function provided for {}.".format(name))
-      return 1
-
-    self.log.info("+ Adding cmd {}( {} )".format(name, ",".join(arglist)))
-    ##Add an argument parser for the function
-    parser = argparse.ArgumentParser(description=description, usage=usage)
-    ##Add the parser to our list
-    self.parsers[name] = parser
-    
-    self.functions[name] = self.Command(name,parser,func,arglist,module,need_admin)
-    ##Add the arguments we want for this function
-    for i in arglist:
-      self.addArgument(name, i)
-    return 1
-
-  def removeCommand(self, name):
-    """Remove a command from the list"""
-    try:
-      del self.functions[name]
-    except:
-      pass
-
-  def loadModule(self, name):
-    """Load an external module from module path"""
-    print("LOADING {}".format(name))
-    self.log.newline() 
-    self.log.info("LOADING MODULE {}".format(name.upper())) 
-    self.log.line()
-    self.log.incIndent()
-    try:
-      ##Try loading the module as i
-      self.log.debug("Importing {}...".format(name))
-      i = importlib.import_module(name)
-      ##In case it's changed and was imported before, reload it 
-      self.log.debug("Reloading...")
-      i = importlib.reload(i)
-      ##Get a list of all the functions defined in the module
-      self.log.debug("Getting functions...")
-      funcs = dir(i)
-      ##Don't import python's internal functions, like __name__ and __init__
-      x = re.compile("__[a-z]*__")
-      z = ([("i.{}".format(y)) for y in funcs if not x.match(y)])
-
-      self.log.debug("Loaded, adding functions...")
-      self.log.incIndent()
-      funcs = ""
-      ##Load the functions in
-      for j in z:
-        self.log.debug("Adding function {}.{}".format(name,j))
-        try:
-          if j[-1] != "_":
-            ##this will actually get the function object, not just its name
-            k = eval(j)
-            ##Get the variables used in the function
-            args = k.__code__.co_varnames
-            ##Get the number of arguments the function expects
-            num = k.__code__.co_argcount
-            defaults = k.__defaults__ or []
-            numdefaults = len(defaults)
-            ##Throw the function and arguments over to our addCommand
-            l = j.split(".")[-1].lower() 
-            funcs = "{}!{}{}, ".format(funcs, l,
-                                      "(ADMIN)" if l[0] == "_" else "")
-            self.addCommand(l, usage="{} {}".format(l, ", ".join(["["+x+"]" for x in args[:num-numdefaults]])), func=k, arglist=args[:num-numdefaults])
-            self.log.debug("Successfully added function '{}'".format(l))
-        except Exception as ex:
-          ##In case it wasn't actually a function object
-          pass
-      self.log.decIndent()
-      self.log.decIndent()
-      self.log.line()
-      self.log.info("LOADED {} SUCCESSFULLY".format(name.upper()))
-      self.log.newline()
-      yield "Inserted module {} ({})".format(name, funcs[:-2])
-      self.modules.append(name)
-      yield True
-    except ImportError as ex:
-      self.log.error("!!! Tried to import Non-existent module {}".format(name))
-      self.log.error(ex)
-      yield "Module {} does not exist".format(name)
-    except Exception as e:
-      self.log.error("!!! Failed with {} !!!".format(e))
-      yield False
-    
-  def unloadModule(self, name):
-    """Unload an entire external module"""
-    self.log.info("-- Unloading module {} --".format(name))
-    try:
-      i = importlib.import_module(name)
-      funcs = dir(i)      
-      x = re.compile("__[a-z]*__")
-      z = ([("i.{}".format(y)) for y in funcs if not x.match(y)])
-      for j in z: 
-        self.log.debug("  Removing {}".format(j))        
-        self.removeCommand(j.split(".")[-1])
-      yield True  
-      self.modules.remove(name)
-      self.log.info("-- Successfully unloaded {} --".format(name))
-    except Exception as e:
-      yield False
-
-  def addArgument(self, cmdName, varName, help="", var_type=str):
-    """Add an argument to a function argument processor"""
-    self.functions[cmdName].parser.add_argument(varName, help=help, type=var_type)
   
-  def processCommand(self, cmd,username=""):
-    """To run when we receive a command"""
-    self.log.debug("RECV: {}".format(cmd))
+  def addCommand(self, function_name, function_object, help=None):
+    """Add a command to the processor
+       ARGS:
+        function_name: The name you wish to call the function by, i.e "func" 
+        function_object: The actual object to run when you call the command
+    """
+    self.log.info("Adding command {}".format(function_name))
     
-    ##Get the command without the prefix (i.e "!")
-    cmd = cmd.partition(self.prefix)[2].strip()
-
-    self.log.debug("Resolved to {}".format(cmd))
-
-    ##Separate the arguments from the command name
-    com,sep,args = cmd.strip().partition(" ")
+    if function_name in self.commands:
+      self.log.info("Command {} already registered. Overwriting")
     
-    ##Select the right object
-    try:
-      funcObject = self.functions[com]
-    except KeyError:
-      ##We don't know of the command
-      self.log.info("Key {} not found".format(com))
-      return "Command not found"
+    com = Command(function_name, function_object, help=help)
+    if com.success:
+      self.commands[function_name] = com
+    else:
+      self.log.info("Failed to add command")
 
-    try:
-      ##Try to get the arguments from the string
-      args = funcObject.parse([x for x in args.split(self.delimiter) if x!=''])
+  def setCallback(self, function):
+    """Set the function to run on function complete
+       ARGS: function (python function)"""
+    self.callback = function
 
-      ##Run the command
-      running = self.run(com,args,username)
-      for value in running:
-        yield value
-    except Exception as e:
-      ##for if we failed to parse 
-      yield "Error: {}".format(e)
-      yield self.getHelp(cmd)
-      
-    except SystemExit:
-      if com == "quit":
-        sys.exit()
-      yield self.getHelp(cmd)
-
-  def run(self, com, args,username):
-    """A wrapper to run the command"""
-    r = self.runCommand(com, vars(args),username=username)
-    for value in r:
-      yield value
-
-  def runCommand(self, com, arglist,username=""):
-    """Run a command"""
-
-    ##Get the function, arguments and if admin is needed
-    funcObj = self.functions[com]
-    x = []
+  def _process(self, command):
+    """Internal process command - parse the command and execute"""
+    self.log.info("Processing request {}...".format(command))
     
-    ##Organise the arguments into the order the function expects
-    for i in funcObj.args:
-      x.append(arglist[i])
+    #Remove trailing and preceeding spaces
+    command = command.strip()
+  
+    #Check if it's a command or not
+    if command[0] == self.command_prefix:
+      #It's a command
+      self._checkAgainstCommands(command)
+    else:
+      #We'll check it against the triggers
+      self._checkAgainstTriggers(command)
 
-    self.log.debug("Running {}({})".format(com, arglist))
-    try:
-      ##Make sure that if we need admin, the user has it
-      if funcObj.admin:
-        if username.lower() not in [x.lower() for x in self.admins]:
-          self.log.warning("  User is not admin, failing")
-          yield "Permission denied - User {} not admin".format(username)
-          return
-      ##Unpack the args and run the function
-      y = funcObj.function(*x)
-      self.log.debug("Running {} with arguments ({})".format(com, x))
-      if y == None:
-        ##In case func doesn't return anything
-        yield None
-      else:
-        if type(y) == types.GeneratorType:
-          ##Return func()
-          for v in y:
-            yield v
+  def _checkAgainstCommands(self, command):
+    self.log.info("Detected command {}".format(command))
+    command = command[1:]
+    command_name,sep,args = command.partition(" ")
+    if command_name in self.commands:
+      self.log.info("Command name detected: {}".format(command_name))
+      #Now we've verified, go ahead and run it
+      try:
+        cmd = self.commands[command_name].run(args)
+        if type(cmd) == types.GeneratorType:
+          for i in cmd:
+            self.outputQ.put(i)
         else:
-          yield y
-    except Exception as e:
-      self.log.error("Failed, {}".format(e))
-      traceback.print_exc()
-      yield self.getHelp(com)
+          self.outputQ.put(cmd)
 
-  def getHelp(self, name):
-    if name == "all":
-      return self.getAllHelp()
-    try:
-      return self.parsers[name].format_help()
-    except KeyError:
-      return None
+      except ArgumentFormatError:
+        self.outputQ.put("Error running {} -- Argument format error")
+    else:
+      self.log.info("No command of name {} detected".format(command_name))
 
-  def getAllHelp(self):
-    """Get a string containing all usage strings"""
+  def _checkAgainstTriggers(self, command):
+    pass
 
-    x = ""
-    for i in self.parsers:
-      x += self.parsers[i].usage + "\n"
-    yield x
+  def getOutput(self):
+    return self.outputQ.get()
 
-  def isAdmin(self, username):
-    yield "{} is{} an admin.".format(username, " not" if (not username.lower() in self.admins) else "")
+  def run(self):
+    """Start the thread off"""
+    self.log.info("Command processor thread starting...")
+    while (not self.stopReq.isSet()) or self.cmdQ.qsize() != 0:
+      if self.stopNOW.isSet():
+        break
+      try:
+        toProcess = self.cmdQ.get(True, 0.5)
+        self._process(toProcess)
+      except queue.Empty:
+        continue
+      except Exception as e:
+        self.log.error(e)
+        traceback.format_exc(e)
 
-  class Command:
-    def __init__(self, name, parser, function, args=[], module="Builtin",admin=False):
-      self.name = name
-      self.parser = parser
-      self.function = function
-      self.module = module
-      self.args = args
-      self.admin = admin
+    self.log.info("Stopping with qsize: {}".format(self.cmdQ.qsize()))
+    self.log.info("Stopreq state: {}".format(self.stopReq.isSet()))
+    self.log.info("Thread closed.")
 
-    def parse(self, args):
-      return self.parser.parse_args(args)
+  def push(self, commandstring):
+    """Add a command to the command queue - to be processed commands
+       ARGS: commandstring (str) - the command to process"""
+    self.log.debug("Pushing command {}".format(commandstring))
+    self.cmdQ.put(commandstring)
+    self.log.debug("Approx size: {}".format(self.cmdQ.qsize()))
+  
+  def exit(self, now=False):
+    """Quit the thread, cleanly exit"""
+    self.log.info("Exit request acknowledged, will exit.")
+    self.stopReq.set()
+    if (now):
+      self.stopNOW.set()
+    
+class Command:
+  def __init__(self, f_name, f_obj, help):
+    self.log = Log()
+    self.log.newline()
+    self.log.info("Creating command {}".format(f_name))
+    self.log.line("-")
+    self.name = f_name
+    self.func = f_obj
+    self.help = help
+    
+    self.nargs = self.func.__code__.co_argcount
+    self.defaults = self.func.__defaults__
+    self.argdefault = {}
+    if (self.defaults):
+      self.noptargs = len(self.defaults) 
+    else:
+      self.noptargs = 0
+    self.args = self.func.__code__.co_varnames[:self.nargs - self.noptargs]
+    self.optargs = self.func.__code__.co_varnames[self.nargs-self.noptargs:
+                                                  1+self.noptargs]
+    self.hints = typing.get_type_hints(self.func) 
 
-    def __repr__(self):
-      return "{0.module}.{0.name}({1})".format(self, ", ".join(self.args))
+    for i in range(self.noptargs):
+      self.argdefault[self.optargs[i]] = self.defaults[i]
+
+    if self.nargs > 0:
+      self.log.info("ARGS: " + ", ".join(self.args))
+      self.log.info("OPTARGS: " + ", ".join(self.optargs))
+      self.log.info("DEFAULTS: " + ", ".join(
+                            ["{}={}".format(
+                      i, self.argdefault[i]) for i in self.argdefault]))      
+    else:
+      self.log.info("No arguments")
+    self.delim = ","
+    
+    self.success = True
+    self.log.line("-")
+
+  def run(self, args):
+    self.log.newline()
+    self.log.newline()
+    self.log.line("+")
+    args = self._formatArgs(args.split(self.delim))
+    self.log.info("Running {} with args {}".format(self.name, args))
+    output = self.func(**args)
+    self.log.line("+")
+    self.log.newline()
+    self.log.newline()
+    return output
+  
+  def _formatArgs(self, args):
+    self.log.debug("Formatting arguments...")
+    args = [x for x in args if x != '']
+    self.log.line("=")
+    self.log.debug("We recieved {} args".format(len(args)))
+    processedArgs = {}
+    allargs = self.args + self.optargs
+    for i in range(self.nargs):
+      self.log.debug("Trying to get arg '{}'".format(allargs[i]))
+      arg = ""
+      argn = allargs[i]
+      if i >= len(args):
+        arg = self.argdefault[argn]
+      else:
+        arg = args[i]
+      self.log.debug("Got {}".format(args))   
+      if allargs[i] in self.hints:
+        self.log.debug("Casting to {}".format(self.hints[argn]))
+        try:
+          arg = self.hints[argn](arg)
+        except ValueError as ex:
+          raise ArgumentFormatError(ex)
+        self.log.debug("Casted: {}".format(arg))
+      processedArgs[argn] = arg
+    
+    self.log.line("=")
+    return processedArgs
+
+class Trigger:
+  pass
+
+class ArgumentFormatError(Exception):
+  pass
