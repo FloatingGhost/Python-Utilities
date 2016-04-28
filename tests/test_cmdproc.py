@@ -6,7 +6,7 @@ from commandprocessor import *
 import atexit
 import time
 from log import Log
-c = CommandProcessor(debug=True)
+c = CommandProcessor(module_path="testmods", debug=False)
 log = Log()
 c.start()
 time.sleep(1)
@@ -31,12 +31,18 @@ def return_argPlusOpt(a: int, b:int=5):
   c = a+b
   return  c
 
+@nottest
+def adminstuff():
+  admin = 1
+
 def test_add_command():
   c.addCommand("ret1", return_1)
   c.addCommand("reta", return_arg)
   c.addCommand("reto", return_optarg)
   c.addCommand("retadd", return_argPlusOpt)
   c.addCommand("retonocheck", return_nocheck)
+  c.addCommand("adminstuff", adminstuff)
+
 def test_run_command():
   c.push("!ret1")
   c.push("!reta 5")
@@ -54,4 +60,7 @@ def test_run_command():
   assert(3 == c.getOutput())
   assert(5 == c.getOutput())
   assert("hello" == c.getOutput())
+
+def test_load():
+  c.loadModule("import_test")
 c.exit()

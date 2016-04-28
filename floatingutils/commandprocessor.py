@@ -28,6 +28,7 @@ class CommandProcessor(threading.Thread):
     self.log.incIndent()
     if debug:
       self.log.setLevel(self.log.DEBUG)
+    sys.path.insert(0, module_path)
     self.callback = print
     self.log.info("Initilising command queue...")
     self.cmdQ = queue.Queue()
@@ -41,12 +42,14 @@ class CommandProcessor(threading.Thread):
     self.command_prefix = command_prefix
     self.module_path = module_path
     self.admins = admins
+    self._addUtilityCommands()
+    self.loadedModules = ["Builtin"]
     self.log.line()
     self.log.info("FINISHED CMDPROC INIT")   
     self.log.newline()
 
   
-  def addCommand(self, function_name, function_object, help=None):
+  def addCommand(self, function_name, function_object, help=None, module="Builtin"):
     """Add a command to the processor
        ARGS:
         function_name: The name you wish to call the function by, i.e "func" 
@@ -57,13 +60,18 @@ class CommandProcessor(threading.Thread):
     if function_name in self.commands:
       self.log.info("Command {} already registered. Overwriting")
     
-    com = Command(function_name, function_object, help=help)
+    com = Command(function_name, function_object, help=help, module=module)
     if com.success:
       self.commands[function_name] = com
     else:
-      self.output("Failed to add command {} -- see log".format(function_name))
       self.log.info("Failed to add command")
 
+  def removeCommand(self, function_name):
+    if function_name in self.commands:
+      del self.commands[function_name]
+      self.log.info("Succesfully removed {}".format(function_name))
+    else:
+      self.log.info("Could not remove non-existent function {}".format(function_name))
   def setCallback(self, function):
     """Set the function to run on function complete
        ARGS: function (python function)"""
@@ -102,7 +110,6 @@ class CommandProcessor(threading.Thread):
       except ArgumentFormatError:
         self.output("Error running {} -- Argument format error")
     else:
-      self.output("No command of name {} detected".format(command_name))
       self.log.info("No command of name {} detected".format(command_name))
 
   def output(self, val):
@@ -149,8 +156,50 @@ class CommandProcessor(threading.Thread):
     if (now):
       self.stopNOW.set()
     
+  ##Module loading/unloading
+  def loadModule(self, name):
+    self.log.newline() 
+    self.log.info("LOADING MODULE {}".format(name.upper())) 
+    self.log.line()
+    self.log.incIndent()
+    try:
+      ##Try loading the module as i
+      self.log.debug("Importing {}...".format(name))
+      i = importlib.import_module(name)
+      ##In case it's changed and was imported before, reload it 
+      self.log.debug("Reloading...")
+      i = importlib.reload(i)
+      ##Get a list of all the functions defined in the module
+      self.log.debug("Getting functions...")
+      funcs = dir(i)
+      ##Don't import python's internal functions, like __name__ and __init__
+      x = re.compile("__[a-z]*__")
+      z = ([("i.{}".format(y)) for y in funcs if not x.match(y)])
+      self.log.debug("Loaded, adding functions...")
+      self.log.incIndent()
+      funcs = ""
+      ##Load the functions in
+      for j in z:
+        self.addCommand(j.split(".")[1], eval(j), module=name)
+      self.loadedModules.append(name)
+    except ImportError as ie:
+      self.log.error("Could not find module {}".format(name))
+      self.log.error(ie)
+    except Exception as e:
+      self.log.error("Unknown exception: {}".format(e)) 
+    
+  def unloadModule(self, module_name):
+    for i in self.commands:
+      if self.commands[i].module == module_name:
+        self.removeCommand(i)
+    self.log.info("Unloaded {}".format(module_name))
+
+  def _addUtilityCommands(self):
+    pass
+
+
 class Command:
-  def __init__(self, f_name, f_obj, help):
+  def __init__(self, f_name, f_obj, help, module = "Builtin"):
     self.log = Log()
     self.log.newline()
     self.log.info("Creating command {}".format(f_name))
@@ -158,7 +207,8 @@ class Command:
     self.name = f_name
     self.func = f_obj
     self.help = help
-    
+    self.module = module
+    self.admin_required = "admin" in self.func.__code__.co_varnames
     self.nargs = self.func.__code__.co_argcount
     self.defaults = self.func.__defaults__
     self.argdefault = {}
@@ -168,7 +218,7 @@ class Command:
       self.noptargs = 0
     self.args = self.func.__code__.co_varnames[:self.nargs - self.noptargs]
     self.optargs = self.func.__code__.co_varnames[self.nargs-self.noptargs:
-                                                  1+self.noptargs]
+                                                  self.noptargs+1]
     self.hints = typing.get_type_hints(self.func) 
 
     for i in range(self.noptargs):
@@ -186,8 +236,11 @@ class Command:
     
     self.success = True
     self.log.line("-")
+    self.log.info(self)
 
-  def run(self, args):
+  def run(self, args, user_is_admin=False):
+    if self.admin_required and not user_is_admin:
+      self.log.warning("{} requires administrative permissions".format(self.name))
     self.log.newline()
     self.log.newline()
     self.log.line("+")
@@ -226,6 +279,11 @@ class Command:
     
     self.log.line("=")
     return processedArgs
+
+  def __repr__(self):
+    x = "\n\nCOMMAND DEFINITION ::- \n"
+    return x+"\nCommand (\n Name: {}.{},\n Args: {},\n OptArgs: {}\n Admin: {}\n)\n".format(
+            self.module, self.name, self.args, self.optargs, self.admin_required)
 class Trigger:
   pass
 

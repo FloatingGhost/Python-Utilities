@@ -2,4 +2,5 @@
 
 export PYTHONPATH=`pwd`/floatingutils:$PYTHONPATH
 
-nosetests tests/test_cmdproc.py
+cd tests
+nosetests test_cmdproc.py
