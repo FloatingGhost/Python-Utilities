@@ -40,12 +40,42 @@ cmdproc.setCallback(print)
 #Push a command 
 cmdproc.push("!help")
 
+#Define some functions for the processor to use
+def myFunc():
+  return 1
+
+#Or with arguments, cmdproc supports auto-cast from type hints
+def myFuncWithArguments(arg:int):
+  return arg
+
+#Add a function
+#Arguments:
+#Function_Name: The name by which to call the function
+#Function_Object: The actual definition of the function
+#cmdproc will automatically pull out the arguments/defaults/type hints :3
+cmdproc.addCommand("myfunc", myFunc)
+cmdproc.addCommand("myfuncargs", myFuncWithArguments)
+
+#Run the newly added commands
+cmdproc.push("!myfunc")
+cmdproc.push("!myfuncargs 5")
+
 #Get the output -- This will wait until there *is* output, so
 #don't count on it exiting if your functions never return :<
+#getOutput() gets the first output from the queue, so there may be a few
+#things to get out of it
 out = cmdproc.getOutput()
->>>out = "Help: blah blah blah memes"
+>>> out = "Help: blah blah blah memes"
+out = cmdproc.getOutput()
+>>> out = 1
+out = cmdproc.getOutput()
+>>> out = 5
 
 #Stop the processor
+#This will wait for the command queue to clear before exiting
 cmdproc.exit()
+
+#Force exit -- Will IMMEDIATELY exit
+cmdproc.exit(True)
 
 ```
