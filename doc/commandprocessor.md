@@ -40,6 +40,11 @@ cmdproc.setCallback(print)
 #Push a command 
 cmdproc.push("!help")
 
+#Get the output -- This will wait until there *is* output, so
+#don't count on it exiting if your functions never return :<
+out = cmdproc.getOutput()
+>>>out = "Help: blah blah blah memes"
+
 #Stop the processor
 cmdproc.exit()
 

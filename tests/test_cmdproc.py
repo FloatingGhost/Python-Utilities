@@ -23,6 +23,10 @@ def return_optarg(a:int=5):
   return a
 
 @nottest
+def return_nocheck(a=5):
+  return a
+
+@nottest
 def return_argPlusOpt(a: int, b:int=5):
   c = a+b
   return  c
@@ -32,6 +36,7 @@ def test_add_command():
   c.addCommand("reta", return_arg)
   c.addCommand("reto", return_optarg)
   c.addCommand("retadd", return_argPlusOpt)
+  c.addCommand("retonocheck", return_nocheck)
 def test_run_command():
   c.push("!ret1")
   c.push("!reta 5")
@@ -39,11 +44,14 @@ def test_run_command():
   c.push("!reto a")
   c.push("!retadd 5")
   c.push("!retadd 1,2")
+  c.push("!retonocheck")
+  c.push("!retonocheck hello")
   assert(1 == c.getOutput())
   assert(5 == c.getOutput())
   assert(5 == c.getOutput())
   assert("Error" in c.getOutput())
   assert(10 == c.getOutput())
   assert(3 == c.getOutput())
-
+  assert(5 == c.getOutput())
+  assert("hello" == c.getOutput())
 c.exit()

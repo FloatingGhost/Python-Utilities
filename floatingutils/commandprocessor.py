@@ -61,6 +61,7 @@ class CommandProcessor(threading.Thread):
     if com.success:
       self.commands[function_name] = com
     else:
+      self.output("Failed to add command {} -- see log".format(function_name))
       self.log.info("Failed to add command")
 
   def setCallback(self, function):
@@ -94,14 +95,20 @@ class CommandProcessor(threading.Thread):
         cmd = self.commands[command_name].run(args)
         if type(cmd) == types.GeneratorType:
           for i in cmd:
-            self.outputQ.put(i)
+            self.output(i)
         else:
-          self.outputQ.put(cmd)
+          self.output(cmd)
 
       except ArgumentFormatError:
-        self.outputQ.put("Error running {} -- Argument format error")
+        self.output("Error running {} -- Argument format error")
     else:
+      self.output("No command of name {} detected".format(command_name))
       self.log.info("No command of name {} detected".format(command_name))
+
+  def output(self, val):
+    self.outputQ.put(val)
+    if self.callback:
+      self.callback(val)
 
   def _checkAgainstTriggers(self, command):
     pass
@@ -219,7 +226,6 @@ class Command:
     
     self.log.line("=")
     return processedArgs
-
 class Trigger:
   pass
 
