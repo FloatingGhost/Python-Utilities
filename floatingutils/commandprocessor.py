@@ -12,6 +12,7 @@ import types
 import typing
 import threading
 import queue
+import asyncio
 
 class CommandProcessor(threading.Thread):
   """A class to generically process commands, as defined by a list of commands and
@@ -97,13 +98,13 @@ class CommandProcessor(threading.Thread):
 
   def _process(self, command):
     """Internal process command - parse the command and execute"""
-    self.log.info("Processing request {}...".format(command))
-    
+    command = command[0]
+    self.log.info("Processing request {}...".format(command[0]))
     #Remove trailing and preceeding spaces
-    command = command.strip()
+    command[0] = command[0].strip()
   
     #Check if it's a command or not
-    if command[0] == self.command_prefix:
+    if command[0][0] == self.command_prefix:
       #It's a command
       self._checkAgainstCommands(command)
     else:
@@ -111,19 +112,18 @@ class CommandProcessor(threading.Thread):
       self._checkAgainstTriggers(command)
 
   def _checkAgainstCommands(self, command):
-    self.log.info("Detected command {}".format(command))
+    command,channel = command
     command = command[1:]
     command_name,sep,args = command.partition(" ")
     if command_name in self.commands:
-      self.log.info("Command name detected: {}".format(command_name))
       #Now we've verified, go ahead and run it
       try:
         cmd = self.commands[command_name].run(args)
         if type(cmd) == types.GeneratorType:
           for i in cmd:
-            self.output(i)
+            self.output([i, channel])
         else:
-          self.output(cmd)
+          self.output([cmd, channel])
 
       except ArgumentFormatError:
         self.output("Error running {} -- Argument format error")
@@ -134,13 +134,18 @@ class CommandProcessor(threading.Thread):
     self.log.info("Outputting {}".format(val))
     self.outputQ.put(val)
     if self.callback:
-      self.callback(val)
+      self.callback(*val)
 
   def _checkAgainstTriggers(self, command):
     pass
 
   def getOutput(self):
-    return self.outputQ.get()
+    try:
+      x = self.outputQ.get(False)
+    except queue.Empty:
+      return None
+    log.info("GOT {}".format(x))
+    return x
 
   def run(self):
     """Start the thread off"""
@@ -161,12 +166,11 @@ class CommandProcessor(threading.Thread):
     self.log.info("Stopreq state: {}".format(self.stopReq.isSet()))
     self.log.info("Thread closed.")
 
-  def push(self, commandstring):
+  def push(self, commandstring, discordChannel = None):
     """Add a command to the command queue - to be processed commands
        ARGS: commandstring (str) - the command to process"""
     self.log.info("Pushing command {}".format(commandstring))
-    self.cmdQ.put(commandstring)
-    self.log.debug("Approx size: {}".format(self.cmdQ.qsize()))
+    self.cmdQ.put([commandstring, discordChannel])
   
   def exit(self, now=False):
     """Quit the thread, cleanly exit"""
@@ -183,7 +187,7 @@ class CommandProcessor(threading.Thread):
     self.log.incIndent()
     try:
       ##Try loading the module as i
-      self.log.debug("Importing {}...".format(name))
+      self.output("Importing {}...".format(name))
       i = importlib.import_module(name)
       ##In case it's changed and was imported before, reload it 
       self.log.debug("Reloading...")
@@ -201,6 +205,8 @@ class CommandProcessor(threading.Thread):
       for j in z:
         if type(eval(j)) == types.FunctionType:
           self.addCommand(j.split(".")[1], eval(j), module=name)
+          self.funcs += "!{}".format(j.split(".")[1])
+      self.output(self.funcs)
       self.loadedModules.append(name)
     except ImportError as ie:
       self.log.error("Could not find module {}".format(name))
@@ -219,14 +225,14 @@ class CommandProcessor(threading.Thread):
     """List all currently loaded modules"""
     x = "Loaded modules: \n"
     x += "\n".join(self.loadedModules)
-    self.output( x + "\n" )
+    return( x + "\n" )
   
   def getHelp(self, cmd=None):
     if cmd:
       if cmd in self.commands:
-        self.output(self.commands[cmd].getHelp())
+        return(self.commands[cmd].getHelp())
       else:
-        self.output("Command does not exist")
+        return("Command does not exist")
 
   def _addUtilityCommands(self):
     self.addCommand("lsmod", self.lsmod)
@@ -301,31 +307,23 @@ class Command:
     return output
   
   def _formatArgs(self, args):
-    self.log.debug("Formatting arguments...")
     args = [x for x in args if x != '']
-    self.log.line("=")
-    self.log.debug("We recieved {} args".format(len(args)))
     processedArgs = {}
     allargs = self.args + self.optargs
     for i in range(self.nargs):
-      self.log.debug("Trying to get arg '{}'".format(allargs[i]))
       arg = ""
       argn = allargs[i]
       if i >= len(args):
         arg = self.argdefault[argn]
       else:
         arg = args[i]
-      self.log.debug("Got {}".format(args))   
       if allargs[i] in self.hints:
-        self.log.debug("Casting to {}".format(self.hints[argn]))
         try:
           arg = self.hints[argn](arg)
         except ValueError as ex:
           raise ArgumentFormatError(ex)
-        self.log.debug("Casted: {}".format(arg))
       processedArgs[argn] = arg
     
-    self.log.line("=")
     return processedArgs
 
   def __repr__(self):
