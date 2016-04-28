@@ -75,15 +75,18 @@ class CommandProcessor(threading.Thread):
     else:
       self.log.info("Could not remove non-existent function {}".format(function_name))
   
-  def addTrigger(self, txt, rpl):
+  def addTrigger(self, trigger_text, replacement_text):
+    """Add a text-based trigger - will send replacement_text when
+       trigger_text is in a given message"""
+
     for trigger in self.triggers:
-      if trigger.trigger == txt:
-        trigger.send_text = rpl
+      if trigger.trigger == trigger_text:
+        trigger.send_text = replacement_text
         return ("Modified trigger to {}".format(trigger))
         
-    self.triggers.append(Trigger(txt, rpl))
+    self.triggers.append(Trigger(trigger_text, replacement_text))
     self.log.info("Added {}".format(self.triggers[-1]))
-    return ("Added!")
+    return ("Added -- {}".format(self.triggers[-1]))
 
   def removeTrigger(self, txt):
     for trigger in self.triggers:
@@ -98,18 +101,22 @@ class CommandProcessor(threading.Thread):
 
   def _process(self, command):
     """Internal process command - parse the command and execute"""
-    command = command[0]
     self.log.info("Processing request {}...".format(command[0]))
     #Remove trailing and preceeding spaces
+    command = command[0]
     command[0] = command[0].strip()
-  
-    #Check if it's a command or not
-    if command[0][0] == self.command_prefix:
-      #It's a command
-      self._checkAgainstCommands(command)
-    else:
-      #We'll check it against the triggers
-      self._checkAgainstTriggers(command)
+    try: 
+      #Check if it's a command or not
+      if command[0][0] == self.command_prefix:
+        #It's a command
+        self.log.info("Processing as command")
+        self._checkAgainstCommands(command)
+      else:
+        self.log.info("Processing as plaintext")
+        #We'll check it against the triggers
+        self._checkAgainstTriggers(command)
+    except IndexError:
+      pass
 
   def _checkAgainstCommands(self, command):
     command,channel = command
@@ -137,7 +144,10 @@ class CommandProcessor(threading.Thread):
       self.callback(*val)
 
   def _checkAgainstTriggers(self, command):
-    pass
+    self.log.info("Checking {}".format(command[0]))
+    for i in self.triggers:
+      if i.match(command[0]):
+        self.output([i.send_text, command[1]])
 
   def getOutput(self):
     try:
@@ -187,7 +197,7 @@ class CommandProcessor(threading.Thread):
     self.log.incIndent()
     try:
       ##Try loading the module as i
-      self.output("Importing {}...".format(name))
+      yield("Importing {}...".format(name))
       i = importlib.import_module(name)
       ##In case it's changed and was imported before, reload it 
       self.log.debug("Reloading...")
@@ -197,17 +207,18 @@ class CommandProcessor(threading.Thread):
       funcs = dir(i)
       ##Don't import python's internal functions, like __name__ and __init__
       x = re.compile("__[a-z]*__")
-      z = ([("i.{}".format(y)) for y in funcs if not x.match(y)])
+      z = ([("i.{}".format(y)) for y in funcs if not (x.match(y) or y[-1]=="_")])
       self.log.debug("Loaded, adding functions...")
       self.log.incIndent()
-      funcs = ""
+      self.funcs = ""
       ##Load the functions in
       for j in z:
         if type(eval(j)) == types.FunctionType:
           self.addCommand(j.split(".")[1], eval(j), module=name)
           self.funcs += "!{}".format(j.split(".")[1])
-      self.output(self.funcs)
       self.loadedModules.append(name)
+    
+      yield(self.funcs)
     except ImportError as ie:
       self.log.error("Could not find module {}".format(name))
       self.log.error(ie)
@@ -234,12 +245,17 @@ class CommandProcessor(threading.Thread):
       else:
         return("Command does not exist")
 
+  def listTriggers(self):
+    return "\n".join([str(x) for x in self.triggers])
+
   def _addUtilityCommands(self):
     self.addCommand("lsmod", self.lsmod)
     self.addCommand("import", self.loadModule)
     self.addCommand("quit", self.exit)
     self.addCommand("help", self.getHelp)
-  
+    self.addCommand("mktrig", self.addTrigger)
+    self.addCommand("rmtrig", self.removeTrigger)
+    self.addCommand("lstrig", self.listTriggers)
 class Command:
   def __init__(self, f_name, f_obj, help, module = "Builtin"):
     self.log = Log()
@@ -283,7 +299,7 @@ class Command:
     self.log.info(self)
 
   def getHelp(self):
-    h =  self.help 
+    h =  self.name + ":\n" + self.help 
     if self.nargs > 0:
       h += "\nARGS: " + ", ".join(self.args) + "\n" 
     if self.noptargs > 0:
@@ -338,12 +354,11 @@ class Trigger:
     self.send_text = send_text
 
   def match(self, txt):
-    regex = re.compile(".* {} .*".format(self.trigger))
-    if regex.match(txt):
-      return True
+    regex = re.compile(".*{}.*".format(self.trigger))
+    return regex.match(txt)
   
   def __repr__(self):
-    return "{} -> {}".format(trigger, send_text)
+    return "{} -> {}".format(self.trigger, self.send_text)
 
 class ArgumentFormatError(Exception):
   pass

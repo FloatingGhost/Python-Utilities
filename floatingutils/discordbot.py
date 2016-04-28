@@ -88,7 +88,7 @@ class Discord:
 
    
   async def processCommand(self, cmd):
-    if cmd.author != self.cli.user and cmd.content[0] == self.cmd_prefix:
+    if cmd.author != self.cli.user:
       self.cmd.push([cmd.content, cmd.channel]) 
  
   async def send(self, msg, channel=None):
