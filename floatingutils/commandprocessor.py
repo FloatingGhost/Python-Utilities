@@ -13,6 +13,7 @@ import typing
 import threading
 import queue
 import asyncio
+import atexit
 
 class CommandProcessor(threading.Thread):
   """A class to generically process commands, as defined by a list of commands and
@@ -49,7 +50,12 @@ class CommandProcessor(threading.Thread):
     self.log.line()
     self.log.info("FINISHED CMDPROC INIT")   
     self.log.newline()
-
+  
+  def join(self, timeout=None):
+    self.log.info("QUITTING")
+    self.log.line("Q")
+    self.stopReq.set()
+    super(WorkerThread, self).join(timeout)
   
   def addCommand(self, function_name, function_object, help=None, module="Builtin"):
     """Add a command to the processor
@@ -170,6 +176,9 @@ class CommandProcessor(threading.Thread):
     self.log.info("Stopping with qsize: {}".format(self.cmdQ.qsize()))
     self.log.info("Stopreq state: {}".format(self.stopReq.isSet()))
     self.log.info("Thread closed.")
+    if dbot:
+      dbot.saveandquit(False)
+        
 
   def push(self, commandstring, discordChannel = None):
     """Add a command to the command queue - to be processed commands
@@ -180,6 +189,7 @@ class CommandProcessor(threading.Thread):
   def exit(self, now=False):
     """Quit the thread, cleanly exit"""
     admin = 1
+    yield "Closing..."
     self.log.info("Exit request acknowledged, will exit.")
     self.stopReq.set()
     if (now):
@@ -213,6 +223,8 @@ class CommandProcessor(threading.Thread):
           if "onimport" in j:
             self.log.info("Running import function...")
             eval(j)()
+          elif "onexit" in j:
+            atexit.register(eval(j))
           else:  
             self.addCommand(j.split(".")[1], eval(j), module=name)
             self.funcs += "!{}, ".format(j.split(".")[1])
@@ -327,7 +339,7 @@ class Command:
     return output
   
   def _formatArgs(self, args):
-    args = [x for x in args if x != '']
+    args = [x.strip() for x in args if x != '']
     processedArgs = {}
     allargs = self.args + self.optargs
     for i in range(self.nargs):

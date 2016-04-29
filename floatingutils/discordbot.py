@@ -16,6 +16,9 @@ import pyaml
 import sys
 import pickle
 import atexit
+from signal import signal, SIGTERM
+from sys import exit
+
 log = Log()
 
 
@@ -56,7 +59,7 @@ class Discord:
       log.error(e)
 
   def saveandquit(self, restart):
-    log.info("Restarting...")
+    log.info("Discord bot quitting...")
     trigs = {}
     for i in self.triggers:
       trigs[i.trigger] = i.text
@@ -83,12 +86,8 @@ class Discord:
       pickle.dump(self.cli.messages,f)
     log.info("Closing client...")
     self.cli.close()
-    
-    if restart:
-      log.info("Restarting...")
-      os.system("python DiscordBot.py")
-    else:
-      sys.exit()
+    quitsig = True
+    log.info("Quit signal set.")
 
   def setprefix(self, p):
     self.bot_prefix = p
@@ -119,8 +118,11 @@ class Discord:
     try: 
       self.cmd.start()
       loop = asyncio.get_event_loop()
-      loop.run_until_complete(self.cli.run(self.conf.getValue("login", "email"),
-                 self.conf.getValue("login", "password")))
+      self.cli.run(self.conf.getValue("login", "email"),
+                 self.conf.getValue("login", "password"))
     except Exception as ex:
       #self.saveandquit(True)
       log.error(ex)
+    except SystemExit:
+      log.warning("SystemExit recieved. Quitting.")
+    
