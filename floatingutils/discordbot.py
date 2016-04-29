@@ -24,9 +24,9 @@ client = discord.Client()
 class Discord:
   def __init__(self, cli, cmd_prefix="!", botname="Discord bot",
                      msg_prefix="BOT: ", modulePath=".", admins=["FloatingGhost"],
-                     init_modules=None, init_triggers=None):
-
+                     version=1, init_modules=None, init_triggers=None):
     self.triggers = []                  
+    self.bot_version = version
     self.bot_prefix = msg_prefix
     self.cmd_prefix = cmd_prefix
     self.botname = botname
@@ -42,6 +42,13 @@ class Discord:
     log.setLevel(log.DEBUG)
     atexit.register(self.saveandquit, True)
     self.cli = cli
+    
+    for i in self.init_modules:
+      self.cmd.push(["!import {}".format(i), None])
+
+    for i in init_triggers:
+      self.cmd.push(["!mktrig {},{}".format(i, init_triggers[i]), None])
+
     try:
       with open("msgs.bin", "rb") as f: 
         self.cli.messages = pickle.load(f)
@@ -57,6 +64,7 @@ class Discord:
     settings = {
                 "bot": {
                   "name": self.botname,
+                  "version": self.bot_version,
                   "msg_prefix": self.bot_prefix,
                   "cmd_prefix": self.cmd_prefix,
                   "debug_logging": False 

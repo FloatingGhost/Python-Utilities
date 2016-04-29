@@ -109,10 +109,8 @@ class CommandProcessor(threading.Thread):
       #Check if it's a command or not
       if command[0][0] == self.command_prefix:
         #It's a command
-        self.log.info("Processing as command")
         self._checkAgainstCommands(command)
       else:
-        self.log.info("Processing as plaintext")
         #We'll check it against the triggers
         self._checkAgainstTriggers(command)
     except IndexError:
@@ -138,13 +136,11 @@ class CommandProcessor(threading.Thread):
       self.log.info("No command of name {} detected".format(command_name))
 
   def output(self, val):
-    self.log.info("Outputting {}".format(val))
     self.outputQ.put(val)
     if self.callback:
       self.callback(*val)
 
   def _checkAgainstTriggers(self, command):
-    self.log.info("Checking {}".format(command[0]))
     for i in self.triggers:
       if i.match(command[0]):
         self.output([i.send_text, command[1]])
@@ -154,7 +150,6 @@ class CommandProcessor(threading.Thread):
       x = self.outputQ.get(False)
     except queue.Empty:
       return None
-    log.info("GOT {}".format(x))
     return x
 
   def run(self):
@@ -184,6 +179,7 @@ class CommandProcessor(threading.Thread):
   
   def exit(self, now=False):
     """Quit the thread, cleanly exit"""
+    admin = 1
     self.log.info("Exit request acknowledged, will exit.")
     self.stopReq.set()
     if (now):
@@ -210,12 +206,16 @@ class CommandProcessor(threading.Thread):
       z = ([("i.{}".format(y)) for y in funcs if not (x.match(y) or y[-1]=="_")])
       self.log.debug("Loaded, adding functions...")
       self.log.incIndent()
-      self.funcs = ""
+      self.funcs = "Loaded functions:\n"
       ##Load the functions in
       for j in z:
         if type(eval(j)) == types.FunctionType:
-          self.addCommand(j.split(".")[1], eval(j), module=name)
-          self.funcs += "!{}".format(j.split(".")[1])
+          if "onimport" in j:
+            self.log.info("Running import function...")
+            eval(j)()
+          else:  
+            self.addCommand(j.split(".")[1], eval(j), module=name)
+            self.funcs += "!{}, ".format(j.split(".")[1])
       self.loadedModules.append(name)
     
       yield(self.funcs)
@@ -226,11 +226,14 @@ class CommandProcessor(threading.Thread):
       self.log.error("Unknown exception: {}".format(e)) 
     
   def unloadModule(self, module_name):
+    yield "Unloading module {}".format(module_name)
+    funcs = "( "
     for i in self.commands:
       if self.commands[i].module == module_name:
         self.removeCommand(i)
+        funcs += i + ", "
     self.loadedModules.remove(module_name)
-    self.log.info("Unloaded {}".format(module_name))
+    self.log.info("Unloaded {} {} )".format(module_name, funcs))
 
   def lsmod(self):
     """List all currently loaded modules"""
@@ -256,6 +259,7 @@ class CommandProcessor(threading.Thread):
     self.addCommand("mktrig", self.addTrigger)
     self.addCommand("rmtrig", self.removeTrigger)
     self.addCommand("lstrig", self.listTriggers)
+
 class Command:
   def __init__(self, f_name, f_obj, help, module = "Builtin"):
     self.log = Log()
