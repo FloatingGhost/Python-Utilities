@@ -34,8 +34,7 @@ class Discord:
     self.cmd_prefix = cmd_prefix
     self.botname = botname
     self.conf = YamlConf("discord.login")
-    self.cmd = CommandProcessor(command_prefix=cmd_prefix, 
-               module_path=modulePath, admins=admins)
+    self.cmd = CommandProcessor()
     self.path = modulePath
     self.admins = admins
     self.init_modules = init_modules
@@ -60,10 +59,24 @@ class Discord:
 
   def saveandquit(self, restart):
     log.info("Discord bot quitting...")
+
+    with open("msgs.bin", "wb") as f:
+      pickle.dump(self.cli.messages,f)
+    log.info("Closing client...")
+    self.cli.close()
+    quitsig = True
+    log.info("Quit signal set.")
+
+  def setprefix(self, p):
+    self.bot_prefix = p
+    return "Set!"
+  
+  def writeConfig(self): 
+    log.info("Writing config...")
     trigs = {}
     for i in self.triggers:
       trigs[i.trigger] = i.text
-
+    log.info("Saving : {}".format(trigs))
     settings = {
                 "bot": {
                   "name": self.botname,
@@ -80,20 +93,10 @@ class Discord:
                 "admins": self.admins,
                 "ai":{"model_directory":"models"}
               }
+    log.info(pyaml.dump(settings))
     with open("discord-config.conf", "w") as f:
       f.write(pyaml.dump(settings))
-    with open("msgs.bin", "wb") as f:
-      pickle.dump(self.cli.messages,f)
-    log.info("Closing client...")
-    self.cli.close()
-    quitsig = True
-    log.info("Quit signal set.")
-
-  def setprefix(self, p):
-    self.bot_prefix = p
-    return "Set!"
-
-   
+    log.info("Written") 
   async def processCommand(self, cmd):
     if cmd.author != self.cli.user:
       self.cmd.push([cmd.content, cmd.channel]) 

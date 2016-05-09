@@ -2,6 +2,7 @@
 __author__ = 'Hannah Ward'
 __package__ = 'floatingutils'
 
+import pyaml
 import re
 import argparse
 import sys
@@ -14,39 +15,68 @@ import threading
 import queue
 import asyncio
 import atexit
+from floatingutils.conf import YamlConf
 
 class CommandProcessor(threading.Thread):
   """A class to generically process commands, as defined by a list of commands and
      argparse parsers - used to extract arguments from a string"""
 
-  def __init__(self, delimiter=",", command_prefix="!", 
-                     module_path=".", admins=[], debug=False):
+  def __init__(self, configfile = "command-proc.conf"):
     super(CommandProcessor, self).__init__()
     self.log = Log()
-    self.log.info("Command Processor Created, prefix {}".format(command_prefix))
+    self.log.info("Command Processor Created")
     self.log.newline()
     self.log.info("CMDPROC INIT")
     self.log.line()
     self.log.incIndent()
-    if debug:
-      self.log.setLevel(self.log.DEBUG)
-    sys.path.insert(0, module_path)
+    self.triggers = []
+    self.log.info("Reading config...")
+    
+    self.config = YamlConf(configfile)
+
+    
     self.callback = print
     self.log.info("Initilising command queue...")
     self.cmdQ = queue.Queue()
     self.log.info("Initilising output queue...")
     self.outputQ = queue.Queue()
     self.commands = {}
+    self.loadedModules = ["Builtin"]
+
     self.log.info("Initilising requests...")
     self.stopReq = threading.Event()
     self.stopNOW = threading.Event()
     self.log.info("Setting config...")
-    self.command_prefix = command_prefix
-    self.module_path = module_path
-    self.admins = admins
+    self.bot_name = self.config.getValue("bot", "name")
+    self.bot_version = self.config.getValue("bot", "version")
+    self.msg_prefix = self.config.getValue("bot", "msg_prefix")
+    self.command_prefix = self.config.getValue("bot", "cmd_prefix")
+    debug = self.config.getValue("bot", "debug_logging")
+    
+    module_path = self.config.getValue("modules", "path")
+    self.module_path = module_path 
+    sys.path.insert(0, module_path)
+
+    initial_modules = self.config.getValue("modules", "load")
+
+    inital_triggers = self.config.getValue("triggers")
+
+    self.admins = self.config.getValue("admins")
+    self.log.info("Read config.")
+    
+    self.log.info("Setting up modules...")
+    for i in initial_modules:
+      self.loadModule(i)
+
+    self.log.info("Setting up triggers...")
+    for i in inital_triggers:
+      self.addTrigger(i, inital_triggers[i])
+
+    self.log.info("Setting verbosity...")
+    if debug:
+      self.log.setLevel(self.log.DEBUG)
+    sys.path.insert(0, module_path)
     self._addUtilityCommands()
-    self.loadedModules = ["Builtin"]
-    self.triggers = []
     self.log.line()
     self.log.info("FINISHED CMDPROC INIT")   
     self.log.newline()
@@ -93,6 +123,35 @@ class CommandProcessor(threading.Thread):
     self.triggers.append(Trigger(trigger_text, replacement_text))
     self.log.info("Added {}".format(self.triggers[-1]))
     return ("Added -- {}".format(self.triggers[-1]))
+
+  def writeConfig(self):
+    self.log.info("Writing config...")
+    trigs = {}
+    for i in self.triggers:
+      trigs[i.trigger] = i.send_text
+
+    settings = {
+        "bot" : {
+          "name": self.bot_name,
+          "version": self.bot_version,
+          "msg_prefix": self.msg_prefix,
+          "cmd_prefix": self.command_prefix,
+          "debug_logging": False
+        },
+        "modules" : {
+          "path": self.module_path,
+          "load": self.loadedModules
+        },
+        "triggers": trigs,
+        "ai": {
+          "model_directory": "models"
+        },
+        "admins": self.admins
+      } 
+    self.log.info(settings)
+    with open("command-proc.conf", "w") as f:
+      f.write(pyaml.dump(settings))
+    self.log.info("Written")
 
   def removeTrigger(self, txt):
     for trigger in self.triggers:
@@ -271,6 +330,7 @@ class CommandProcessor(threading.Thread):
     self.addCommand("mktrig", self.addTrigger)
     self.addCommand("rmtrig", self.removeTrigger)
     self.addCommand("lstrig", self.listTriggers)
+    self.addCommand("writeconf", self.writeConfig)
 
 class Command:
   def __init__(self, f_name, f_obj, help, module = "Builtin"):
@@ -309,7 +369,8 @@ class Command:
     else:
       self.log.info("No arguments")
     self.delim = ","
-    
+    self.NOSPLIT = "NOSPLIT" in self.func.__code__.co_varnames
+
     self.success = True
     self.log.line("-")
     self.log.info(self)
@@ -330,7 +391,10 @@ class Command:
     self.log.newline()
     self.log.newline()
     self.log.line("+")
-    args = self._formatArgs(args.split(self.delim))
+    if not self.NOSPLIT:
+      args = self._formatArgs(args.split(self.delim))
+    else:
+      args = self._formatArgs([args])
     self.log.info("Running {} with args {}".format(self.name, args))
     output = self.func(**args)
     self.log.line("+")
