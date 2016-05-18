@@ -47,19 +47,19 @@ class CommandProcessor(threading.Thread):
     self.stopReq = threading.Event()
     self.stopNOW = threading.Event()
     self.log.info("Setting config...")
-    self.bot_name = self.config.getValue("bot", "name")
-    self.bot_version = self.config.getValue("bot", "version")
-    self.msg_prefix = self.config.getValue("bot", "msg_prefix")
-    self.command_prefix = self.config.getValue("bot", "cmd_prefix")
-    debug = self.config.getValue("bot", "debug_logging")
+    self.bot_name = self.config.getValue("bot", "name") or "Bot"
+    self.bot_version = self.config.getValue("bot", "version") or "0.01"
+    self.msg_prefix = self.config.getValue("bot", "msg_prefix") or "BOT: "
+    self.command_prefix = self.config.getValue("bot", "cmd_prefix") or "!"
+    debug = self.config.getValue("bot", "debug_logging") or False
     
-    module_path = self.config.getValue("modules", "path")
+    module_path = self.config.getValue("modules", "path") or "."
     self.module_path = module_path 
     sys.path.insert(0, module_path)
 
-    initial_modules = self.config.getValue("modules", "load")
+    initial_modules = self.config.getValue("modules", "load") or []
 
-    inital_triggers = self.config.getValue("triggers")
+    inital_triggers = self.config.getValue("triggers") or []
 
     self.admins = self.config.getValue("admins")
     self.log.info("Read config.")

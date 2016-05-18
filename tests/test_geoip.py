@@ -1,4 +1,4 @@
-from floatingutils.geoip import Geo
+from floatingutils.api.geoip import Geo
 
 g = Geo()
 

@@ -2,14 +2,20 @@
 
 ###Test file for command processor
 from nose.tools import nottest
-from commandprocessor import *
+
 import atexit
 import time
-from log import Log
-c = CommandProcessor(module_path="testmods", debug=False)
+
+from floatingutils.commandprocessor import *
+from floatingutils.log import Log
+
+c = CommandProcessor(configfile="test_configs/cmdproc.conf")
+
 log = Log()
 c.start()
 time.sleep(1)
+
+
 @nottest
 def return_1():
   return 1

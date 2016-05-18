@@ -8,6 +8,9 @@ setup(name='FloatingUtils' ,
       author='Hannah Ward',
       author_email='hannah.ward9001@gmail.com',
       url='',
-      packages=['floatingutils', 'floatingutils.network'],
-      package_data={"floatingutils":['config/*.conf']},
+      packages=['floatingutils', 'floatingutils.network',
+                'floatingutils.ai', 'floatingutils.api'
+                ],
+      package_data={"floatingutils":['config/*.conf'],
+                    "floatingutils.api":["config/*.conf"]},
     ) 

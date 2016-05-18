@@ -9,6 +9,7 @@ import os
 from floatingutils.network.session import *
 from floatingutils.log import Log
 from floatingutils.network.encryption import *
+from floatingutils.network.errors import *
 
 log = Log()
 
@@ -18,14 +19,25 @@ sman = SessionManager()
 
 keys = LocalKeys(os.path.expanduser("~/.hftpd"))
 
+auth = ""
+
+with open(os.path.expanduser("~/.hftpd") + "/authorized_keys", "r") as f:
+  auth = f.read()
+  
 pathways = {}
 
 class Server(BaseHTTPRequestHandler):
   """Server Class -- A wrapper around BaseHTTPRequestHandler for less verbose use""" 
  
   def do_GET(self):
-    pass
+    self.send_response(200)
+    self.send_header("content-type", "text/html")
+    self.end_headers()
+    self.wfile.write(
+      bytes("<marquee><h1>Fek off post only no gets go away</h1></marquee>", "utf-8")
+    )
 
+    self.wfile.write(bytes("<marquee><input>Memes</input></marquee>", "utf-8"))
   def do_POST(self):
     log.info("Processing POST Req from {}".format(self.client_address))
 
@@ -92,16 +104,21 @@ class Server(BaseHTTPRequestHandler):
           conf = keys.networkEncrypt(str(s_check+1),
                                     sman.getSession(post["SESSION_KEY"]).getPublic()
                                     )
-          return {"ACK":"SERV_IDENT", "CHALLENGE_ANSWER":conf}
+          return {"STATUS":code("OK"), "ACK":"SERV_IDENT", "CHALLENGE_ANSWER":conf}
         else:
           log.warning("{} Failed authentication checks!".format(self.client_address))
-          return {"ACK":"FAILED"}
+          return {"STATUS":code("FAIL"), "CODE":code("ACCESS_DENIED")}
 
       if auth == 1:
-        return {"ERROR":"ALREADY_AUTH"}
+        return {"STATUS":code("FAIL"), "CODE":code("ALREADY_AUTHORIZED")}
 
     except AssertionError:
       assert("RSA_KEY" in post)
+      with open(os.path.expanduser("~/.hftpd/authorized_keys"),"r") as f:
+        g = f.read()
+        log.info("Checking that {}\n is in \n {}".format(post["RSA_KEY"], g))
+        if not (post["RSA_KEY"] in g):
+          return {"STATUS":code("FAIL"), "CODE":code("ACCESS_DENIED")}
       #New user
       s = sman.newSession(True, post["RSA_KEY"])
       s.setCheck(rand.randint(1, 1000000))

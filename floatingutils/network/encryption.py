@@ -2,8 +2,11 @@
 
 import rsa
 from rsa.bigfile import *
+
 import os
 from binascii import hexlify, unhexlify
+
+
 from floatingutils.log import Log
 
 log = Log()
@@ -12,8 +15,6 @@ class LocalKeys:
   def __init__(self, keydir:str=os.path.expanduser("~/.hftp")):
     self.keydir = keydir
     self.loadKeys()
-
-    print(self.PUBLIC_KEY.save_pkcs1())
 
   def loadKeys(self):
     try:
@@ -33,9 +34,9 @@ class LocalKeys:
       log.info("Saving keys to {}".format(self.keydir))
 
       with open("{}/private.pem".format(self.keydir), "w") as f:
-        f.write(str(PRIVATE_KEY.save_pkcs1(), 'utf-8'))
+        f.write(str(self.PRIVATE_KEY.save_pkcs1(), 'utf-8'))
       with open("{}/public.pem".format(self.keydir), "w") as f:
-        f.write(str(PUBLIC_KEY.save_pkcs1(), 'utf-8'))
+        f.write(str(self.PUBLIC_KEY.save_pkcs1(), 'utf-8'))
 
 
   def getPublic(self):
