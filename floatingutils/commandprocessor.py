@@ -30,6 +30,8 @@ class CommandProcessor(threading.Thread):
     self.log.line()
     self.log.incIndent()
     self.triggers = []
+    self.services = []
+    self.pipes = []
     self.log.info("Reading config...")
     
     self.config = YamlConf(configfile)
@@ -168,7 +170,10 @@ class CommandProcessor(threading.Thread):
     """Internal process command - parse the command and execute"""
     self.log.info("Processing request {}...".format(command[0]))
     #Remove trailing and preceeding spaces
-    command = command[0]
+    if isinstance(command, str):
+      command = [command, None]
+    if isinstance(command[0], list):
+      command = command[0]
     command[0] = command[0].strip()
     try: 
       #Check if it's a command or not
@@ -196,10 +201,14 @@ class CommandProcessor(threading.Thread):
           self.output([cmd, channel])
 
       except ArgumentFormatError:
-        self.output("Error running {} -- Argument format error")
-    else:
-      self.log.info("No command of name {} detected".format(command_name))
+        self.output("Error running {} -- Argument format error".format(command_name))
+      except TypeError:
+        pass
 
+    else:
+
+      self.log.info("No command of name {} detected".format(command_name))
+      self.output("Error running {} -- Command not found".format(command_name))
   def output(self, val):
     self.outputQ.put(val)
     if self.callback:
@@ -235,15 +244,16 @@ class CommandProcessor(threading.Thread):
     self.log.info("Stopping with qsize: {}".format(self.cmdQ.qsize()))
     self.log.info("Stopreq state: {}".format(self.stopReq.isSet()))
     self.log.info("Thread closed.")
-    if dbot:
-      dbot.saveandquit(False)
         
 
-  def push(self, commandstring, discordChannel = None):
+  def push(self, commandstring, assoc_info = None):
     """Add a command to the command queue - to be processed commands
-       ARGS: commandstring (str) - the command to process"""
+       ARGS: commandstring (str) - the command to process
+             assoc_info (Any) - Things to be returned with the processed cmd"""
     self.log.info("Pushing command {}".format(commandstring))
-    self.cmdQ.put([commandstring, discordChannel])
+    self.cmdQ.put([commandstring, assoc_info])
+    for pipe in self.pipes:
+      pipe.put([commandstring, assoc_info])
   
   def exit(self, now=False):
     """Quit the thread, cleanly exit"""
@@ -287,7 +297,8 @@ class CommandProcessor(threading.Thread):
           else:  
             self.addCommand(j.split(".")[1], eval(j), module=name)
             self.funcs += "!{}, ".format(j.split(".")[1])
-      self.loadedModules.append(name)
+      if name not in self.loadedModules:
+        self.loadedModules.append(name)
     
       yield(self.funcs)
     except ImportError as ie:
@@ -317,10 +328,41 @@ class CommandProcessor(threading.Thread):
       if cmd in self.commands:
         return(self.commands[cmd].getHelp())
       else:
-        return("Command does not exist")
-
+        return("Command {} does not exist".format(cmd))
+    else:
+      #Return list of commands
+      return "Available Commands: "+", ".join(self.commands)
   def listTriggers(self):
     return "\n".join([str(x) for x in self.triggers])
+
+  def loadService(self, srvname):
+    self.services.append(
+      Service( 
+        name = srvname,
+        function = function,
+        autostart = True
+      )
+    )
+
+  def startService(self, srvname):
+    for i in self.services:
+      if i.name == srvname:
+        i.start()     
+        return "Started" 
+    return "Service not found"
+
+  def killService(self, srvname):
+    for i in self.services:
+      if i.name == srvname:
+        i.stop()
+        self.services.remove(i)
+        return "Killed"
+    return "Service not found"
+
+  
+  def lsService(self):
+    x = [i.name for i in self.services]
+    return "\n".join(x)
 
   def _addUtilityCommands(self):
     self.addCommand("lsmod", self.lsmod)
@@ -331,7 +373,11 @@ class CommandProcessor(threading.Thread):
     self.addCommand("rmtrig", self.removeTrigger)
     self.addCommand("lstrig", self.listTriggers)
     self.addCommand("writeconf", self.writeConfig)
-
+    self.addCommand("loadSrv", self.loadService)
+    self.addCommand("startSrv", self.startService)
+    self.addCommand("killSrv", self.killService)
+    self.addCommand("lsSrv", self.lsService)
+    
 class Command:
   def __init__(self, f_name, f_obj, help, module = "Builtin"):
     self.log = Log()
@@ -427,7 +473,36 @@ class Command:
     return x+"\nCommand (\n Name: {}.{},\n Args: {},\n OptArgs: {}\n Admin: {}\n)\n".format(
             self.module, self.name, self.args, self.optargs, self.admin_required)
 
+class Service:
+  def __init__(self, name, function, arguments, autostart = True, sleeptime = 0.1):
+    log.info("Creating service...")
+    self.function = function
+    self.name = name
+    self.arguments = arguments
+    self.stopSignal = False
+    self.sleeptime = sleeptime
+    self.proc = Thread(target=self.run, args=[self.arguments])
+    self.pipe = queue.Queue()
 
+    if autostart:
+      log.info("Srv{} is starting...".format(self))
+      self.proc.start()
+
+  def __repr__(self):
+    return "Service {} -- Alive: {}".format(self.name, self.proc.isAlive())
+
+  def start(self):
+    self.proc.start()
+
+  def stop(self):
+    self.proc.join()
+    self.stopSignal = True
+    
+  def run(self):
+    while not self.stopSignal:
+      cmd = self.pipe.get()
+      self.function(self.arguments, cmd)
+    
 class Trigger:
   def __init__(self, trigger, send_text):
     self.trigger = trigger

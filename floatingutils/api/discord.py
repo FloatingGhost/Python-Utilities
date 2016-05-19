@@ -121,8 +121,8 @@ class Discord:
     try: 
       self.cmd.start()
       loop = asyncio.get_event_loop()
-      self.cli.run(self.conf.getValue("login", "email"),
-                 self.conf.getValue("login", "password"))
+      self.cli.run(self.conf.getValue("login", "token"))
+                 
     except Exception as ex:
       #self.saveandquit(True)
       log.error(ex)
