@@ -1,92 +1,138 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+
+#Metadata, just info for info's sake
 __author__ = 'Hannah Ward'
 __package__ = 'floatingutils'
 
+
+#Imports
 import pyaml
 import re
 import argparse
 import sys
 import importlib
 import traceback
-from floatingutils.log import Log
 import types
 import typing
 import threading
 import queue
 import asyncio
 import atexit
-from floatingutils.conf import YamlConf
 
+#My own utilities
+from floatingutils.conf import YamlConf
+from floatingutils.log import Log
+
+
+#CommandProcessor inherits from Thread, so we can run it in the background
 class CommandProcessor(threading.Thread):
-  """A class to generically process commands, as defined by a list of commands and
-     argparse parsers - used to extract arguments from a string"""
+  """Thread-based module for processing commands. 
+	Takes in commands from a queue, processes them asyncronously,
+	outputs to another queue.
+	ARGS: configfile -- The file to load in all of our configuration from
+  """
 
   def __init__(self, configfile = "command-proc.conf"):
     super(CommandProcessor, self).__init__()
+    
+    #Open a logger for superior feedback(tm)
     self.log = Log()
+    
+    #Alert the user that we're starting the processor
     self.log.info("Command Processor Created")
     self.log.newline()
     self.log.info("CMDPROC INIT")
     self.log.line()
     self.log.incIndent()
+
+    #Set up some initial variables
     self.triggers = []
     self.services = []
     self.pipes = []
-    self.log.info("Reading config...")
-    
-    self.config = YamlConf(configfile)
-
-    
-    self.callback = print
-    self.log.info("Initilising command queue...")
-    self.cmdQ = queue.Queue()
-    self.log.info("Initilising output queue...")
-    self.outputQ = queue.Queue()
     self.commands = {}
     self.loadedModules = ["Builtin"]
-
-    self.log.info("Initilising requests...")
-    self.stopReq = threading.Event()
-    self.stopNOW = threading.Event()
+    
+    #Read in the config
+    self.log.info("Reading config...")
+    self.config = YamlConf(configfile)
     self.log.info("Setting config...")
+   
+    #Load in the config
+    #The getValue() or "Value" means that we have a default
+    #So if we can't get something from the config, it defaults to something 
     self.bot_name = self.config.getValue("bot", "name") or "Bot"
     self.bot_version = self.config.getValue("bot", "version") or "0.01"
     self.msg_prefix = self.config.getValue("bot", "msg_prefix") or "BOT: "
     self.command_prefix = self.config.getValue("bot", "cmd_prefix") or "!"
     debug = self.config.getValue("bot", "debug_logging") or False
-    
     module_path = self.config.getValue("modules", "path") or "."
+
+    #This means python will be able to find modules
+    #When python looks for things, it goes down a so-called PYTHONPATH
+    #We give it some new directories to look in
     self.module_path = module_path 
     sys.path.insert(0, module_path)
-
     initial_modules = self.config.getValue("modules", "load") or []
-
     inital_triggers = self.config.getValue("triggers") or []
-
     self.admins = self.config.getValue("admins")
     self.log.info("Read config.")
-    
+
+    #callback means that we run a function once we're done
+    #processing something, so like we can go
+      # output = process("!hello")
+      # callback(output) 
+    #By default it's just print, so we print the output
+    self.callback = print
+
+    #Set up the input and output queues
+    self.log.info("Initilising command queue...")
+    self.cmdQ = queue.Queue()
+    self.log.info("Initilising output queue...")
+    self.outputQ = queue.Queue()
+
+    #Set up some stuff so we can tell the commandprocessor to stop
+    #when we want to exit, we turn the Event on
+    self.log.info("Initilising requests...")
+    self.stopReq = threading.Event()
+    self.stopNOW = threading.Event()
+
+    #We have a few "initial modules", things to load on startup
     self.log.info("Setting up modules...")
     for i in initial_modules:
       self.loadModule(i)
 
+    #Same goes for triggers
     self.log.info("Setting up triggers...")
     for i in inital_triggers:
       self.addTrigger(i, inital_triggers[i])
 
+    #If the user wants more information than usual, they can set debug to True
     self.log.info("Setting verbosity...")
     if debug:
       self.log.setLevel(self.log.DEBUG)
-    sys.path.insert(0, module_path)
+
+    #For reference: an underscore before the function name means that it only has INTERNAL use,
+    #i.e nobody outside this class should call _addUtilityCommands()
     self._addUtilityCommands()
+
+    #Tell the user that we've finished setting everything up
     self.log.line()
     self.log.info("FINISHED CMDPROC INIT")   
     self.log.newline()
   
   def join(self, timeout=None):
+    """When the owner of CommandProcessor wants us to exit, 
+    we alert the user that we've recieved the quit request,
+    and shut everythig down
+    """
+
     self.log.info("QUITTING")
     self.log.line("Q")
+    #Tell the processing function to stop
     self.stopReq.set()
+  
+    #Join the thread to the main process,
+    #wait for `timeout` seconds before forcing it to.
     super(WorkerThread, self).join(timeout)
   
   def addCommand(self, function_name, function_object, help=None, module="Builtin"):
@@ -95,39 +141,57 @@ class CommandProcessor(threading.Thread):
         function_name: The name you wish to call the function by, i.e "func" 
         function_object: The actual object to run when you call the command
     """
+
     self.log.info("Adding command {}".format(function_name))
-    
+
+    #Check if we've already got a command by name `function_name`    
     if function_name in self.commands:
       self.log.info("Command {} already registered. Overwriting")
     
+    #Make a nice little command object, for keeping track of it
     com = Command(function_name, function_object, help=help, module=module)
+
+    #Make sure it actually worked yo
     if com.success:
       self.commands[function_name] = com
     else:
       self.log.info("Failed to add command")
 
   def removeCommand(self, function_name):
+    """WHAT THE FEK DO YOU THINK IT DOES? MAKE CAKE? NO. IT REMOVES A COMMAND!"""
+
+    #Check that we've actually got a command by that name
     if function_name in self.commands:
+      #If we do, delete it!
       del self.commands[function_name]
       self.log.info("Succesfully removed {}".format(function_name))
     else:
+      #Otherwise, we can't. Because you can't delete something that doesn't exist, dummy
       self.log.info("Could not remove non-existent function {}".format(function_name))
   
   def addTrigger(self, trigger_text, replacement_text):
     """Add a text-based trigger - will send replacement_text when
        trigger_text is in a given message"""
 
+    #Check if we've got a trigger about that already, because we might
     for trigger in self.triggers:
       if trigger.trigger == trigger_text:
+        #If we do, modifify it to the new trigger
         trigger.send_text = replacement_text
         return ("Modified trigger to {}".format(trigger))
         
+    #If we haven't got a trigger about `trigger_text`, 
+    #make a new one
     self.triggers.append(Trigger(trigger_text, replacement_text))
     self.log.info("Added {}".format(self.triggers[-1]))
     return ("Added -- {}".format(self.triggers[-1]))
 
   def writeConfig(self):
+    """Save the config, all currently loaded modules will be saved to init_modules"""
     self.log.info("Writing config...")
+
+    #Add all of our triggers to a nice little dictionary,
+    #So we can write it to a file
     trigs = {}
     for i in self.triggers:
       trigs[i.trigger] = i.send_text
@@ -150,12 +214,17 @@ class CommandProcessor(threading.Thread):
         },
         "admins": self.admins
       } 
+
     self.log.info(settings)
+    
+    #Write the config in YAML format 
     with open("command-proc.conf", "w") as f:
       f.write(pyaml.dump(settings))
     self.log.info("Written")
 
   def removeTrigger(self, txt):
+    """Remove the trigger with `trigger_text` == `txt`"""
+
     for trigger in self.triggers:
       if trigger.trigger == txt:
         self.triggers.remove(trigger)
@@ -169,12 +238,19 @@ class CommandProcessor(threading.Thread):
   def _process(self, command):
     """Internal process command - parse the command and execute"""
     self.log.info("Processing request {}...".format(command[0]))
+
     #Remove trailing and preceeding spaces
+    
+    #isinstance checks if command is a string or list
+      #e.g isinstance("hello", str) is True
+      #isinstance("hello", list) is False
+
     if isinstance(command, str):
       command = [command, None]
     if isinstance(command[0], list):
       command = command[0]
     command[0] = command[0].strip()
+
     try: 
       #Check if it's a command or not
       if command[0][0] == self.command_prefix:
