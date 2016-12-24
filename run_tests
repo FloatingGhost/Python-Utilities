@@ -1,6 +1,7 @@
 #!/bin/bash
 
 export PYTHONPATH=`pwd`/floatingutils:$PYTHONPATH
+sudo python setup.py install
 
 cd tests
 python3 run_tests.py

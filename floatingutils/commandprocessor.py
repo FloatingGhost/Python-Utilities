@@ -133,7 +133,7 @@ class CommandProcessor(threading.Thread):
   
     #Join the thread to the main process,
     #wait for `timeout` seconds before forcing it to.
-    super(WorkerThread, self).join(timeout)
+    super(Thread, self).join(timeout)
   
   def addCommand(self, function_name, function_object, help=None, module="Builtin"):
     """Add a command to the processor
@@ -259,7 +259,7 @@ class CommandProcessor(threading.Thread):
       else:
         #We'll check it against the triggers
         self._checkAgainstTriggers(command)
-    except IndexError:
+    except Exception:
       pass
 
   def _checkAgainstCommands(self, command):

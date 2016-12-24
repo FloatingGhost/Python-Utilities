@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+
+from floatingutils.log import Log
+
+log = Log()
+
+
+class Protocol:
+  """a nice widdle class for to hjaelp Protocol"""
+
+  def __init__(self, name):
+    log.info("Creating protocol {}".format(name))
+    self.name = name
+    self.codes = {}
+    self.revCodes = {}
+    self.expectedResponses = {}
+    self.processFunctions = {}
+    self.addCode(-1, "UNKNOWN_ERROR")
+    self.addCode(-2, "WRONG_PROTOCOL")
+    self.addCode(-3, "NO_YOU_FAGGOT_THATS_WRONG")
+    self.addCode(-4, "NOT_IMPLEMENTED")
+  def addCode(self, code:int, msg:str):
+    log.info("Adding code {} = {}".format(code, msg))
+    self.codes[code] = msg
+    self.revCodes[msg] = code
+
+  def getCode(self, msg:str):
+    if msg in self.revCodes:
+      return self.revCodes[msg]
+    else:
+      return -1
+
+  def getMsg(self, code:int):
+    if code in self.codes:
+      return self.codes[code]
+    else:
+      return "INVALID_CODE"
+
+  def addExpectedResponse(self, message:str, expected:int):
+    self.expectedResponses[message] = expected
+
+  def addProcessFunction(self, code:str, func):
+    self.processFunctions[code] = func
+
+  def process(self, data:dict):
+    try:
+      assert(data["PROTOCOL"] == self.name)
+      code = data["CODE"]
+      if code in self.processFunctions:
+        return self.protocolFormat(self.processFunctions[code](data))
+    except AssertionError:
+      return self.protocolFormat({"STATUS":self.getCode("WRONG_PROTOCOL")})
+    except KeyError:
+      return self.protocolFormat({"STATUS":self.getCode("NO_YOU_FAGGOT_THATS_WRONG")})
+    except Exception : 
+      return self.protocolFormat({"STATUS":self.getCode("UNKNOWN_ERROR")})
+    
+    return self.protocolFormat({"STATUS":self.getCode("NOT_IMPLEMENTED")})
+
+  def protocolFormat(self, data:dict):
+    if isinstance(data, dict):
+      data["PROTOCOL"] == self.name.upper()
+      if "STATUS" not in data:
+        data["STATUS"] = self.getCode("OK")
+    else:
+      data = {"PROTOCOL":self.name.upper(), 
+              "STATUS":self.getCode("OK"),
+              "MESSAGE":data
+              }
+    log.info(data)
+    return data
+
